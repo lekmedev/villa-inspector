@@ -270,30 +270,13 @@ $('#completedList').onclick = handleListClick;
 $('#vsStar').onclick = () => { toggleFav(cur); renderSheet() };
 document.querySelectorAll('.slot').forEach(b => b.onclick = () => { slot = b.dataset.slot; $('#cam').click() });
 
-function compressImage(file, maxWidth = 1280, quality = 0.7) {
+// Chuyển file ảnh trực tiếp sang Base64 giữ nguyên 100% chất lượng gốc (không nén, không resize)
+function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (e) => {
-      const img = new Image();
-      img.src = e.target.result;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = reject;
-    };
+    reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 }
 
@@ -302,9 +285,9 @@ $('#cam').onchange = async e => {
   if (!f || !cur || !slot) return;
   const n = cur, k = slot;
   
-  toast(`Villa ${pad(n)}: đang lưu ảnh ${k === 'before' ? 'trước' : 'sau'}...`);
+  toast(`Villa ${pad(n)}: đang gửi ảnh gốc ${k === 'before' ? 'trước' : 'sau'}...`);
   try {
-    const b64 = await compressImage(f, 1280, 0.7);
+    const b64 = await readFileAsBase64(f);
     photos[n] = photos[n] || {};
     photos[n][k] = b64;
     store.set('vi:photos', photos);
@@ -320,12 +303,12 @@ $('#cam').onchange = async e => {
           villaId: `Villa ${pad(n)}`,
           type: k,
           image: b64,
-          mimeType: 'image/jpeg'
+          mimeType: f.type || 'image/jpeg'
         })
       });
       const result = await res.json();
       if (result.status === 'success') {
-        toast(`Villa ${pad(n)}: đã lưu lên Drive ✓`);
+        toast(`Villa ${pad(n)}: đã lưu ảnh gốc lên Drive ✓`);
         if (result.fileUrl) {
           photos[n][k] = result.fileUrl;
           store.set('vi:photos', photos);
