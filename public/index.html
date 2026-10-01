@@ -58,9 +58,23 @@ input[type=search]::-webkit-search-cancel-button{display:none}
     </div>
   </div>
 
-  <!-- List -->
-  <div id="list" class="px-2 pt-2 pb-32"></div>
+  <!-- List Chưa hoàn thành -->
+  <div id="list" class="px-2 pt-2"></div>
   <p id="empty" class="hidden text-center text-[15px] sub py-20">Không có villa nào khớp.</p>
+
+  <!-- Section Đã hoàn thành (Collapse / Thu gọn) -->
+  <div id="completedSection" class="px-3 pt-4 pb-32 border-t border-[#f0f0f0] mt-4 hidden">
+    <button id="toggleCompleted" class="tap w-full flex items-center justify-between py-2 px-2 rounded-xl text-left">
+      <div class="flex items-center gap-2">
+        <span class="text-[15px] font-medium text-[#777]">Đã hoàn thành</span>
+        <span id="completedBadge" class="text-[12px] font-medium px-2 py-0.5 rounded-full soft text-[#666]">0</span>
+      </div>
+      <svg id="collapseIcon" class="w-4 h-4 text-[#aaa] transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 9 6 6 6-6"/>
+      </svg>
+    </button>
+    <div id="completedList" class="mt-1 hidden"></div>
+  </div>
 
   <!-- FAB -->
   <div class="sticky bottom-0 z-30 h-0 pointer-events-none">
@@ -110,6 +124,8 @@ const store = {
 let favs = new Set(store.get('vi:favs', []));
 let photos = store.get('vi:photos', {});
 let tab = 'all', q = '', cur = null, slot = null;
+let isCompletedExpanded = false;
+
 const done = n => !!(photos[n] && photos[n].before && photos[n].after);
 const started = n => !!(photos[n] && (photos[n].before || photos[n].after));
 const sub = n => done(n) ? 'Đã chụp đủ ảnh trước và sau'
@@ -118,33 +134,68 @@ const sub = n => done(n) ? 'Đã chụp đủ ảnh trước và sau'
 const dot = n => done(n) ? '#34c759' : started(n) ? '#ffb800' : 'transparent';
 const star = on => `<svg width="22" height="22" viewBox="0 0 24 24" fill="${on ? '#2b2b2b' : 'none'}" stroke="#2b2b2b" stroke-width="1.6" stroke-linejoin="round" style="opacity:${on ? 1 : .25}"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>`;
 
+function createRowElement(n) {
+  const el = document.createElement('div');
+  el.className = 'row flex items-center gap-4 px-3 h-24 rounded-2xl cursor-pointer';
+  el.dataset.open = n;
+  const p = photos[n] || {}, img = p.after || p.before;
+  el.innerHTML = `
+    <div class="relative shrink-0">
+      <div class="w-[62px] h-[62px] rounded-full soft overflow-hidden flex items-center justify-center text-[20px] font-medium text-[#999]">${img ? `<img src="${img}" alt="" class="w-full h-full object-cover">` : pad(n)}</div>
+      <span class="absolute right-0 bottom-0 w-[14px] h-[14px] rounded-full border-2 border-white" style="background:${dot(n)}"></span>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="text-[18px] font-medium">Villa ${pad(n)}</div>
+      <div class="text-[14px] sub truncate">${sub(n)}</div>
+    </div>
+    <button data-star="${n}" aria-label="Điểm danh villa ${pad(n)}" class="tap p-2 -mr-1">${star(favs.has(n))}</button>`;
+  return el;
+}
+
 function render(){
-  const list = $('#list'); list.innerHTML = ''; let shown = 0;
+  const list = $('#list'); 
+  const completedList = $('#completedList');
+  const completedSection = $('#completedSection');
+  
+  list.innerHTML = ''; 
+  completedList.innerHTML = '';
+  
+  let shownPending = 0;
+  let shownCompleted = 0;
+
   for (let n = 1; n <= TOTAL; n++){
     if (tab === 'fav' && !favs.has(n)) continue;
     if (q && !pad(n).includes(q) && !String(n).includes(q)) continue;
-    shown++;
-    const el = document.createElement('div');
-    el.className = 'row flex items-center gap-4 px-3 h-24 rounded-2xl cursor-pointer';
-    el.dataset.open = n;
-    const p = photos[n] || {}, img = p.after || p.before;
-    el.innerHTML = `
-      <div class="relative shrink-0">
-        <div class="w-[62px] h-[62px] rounded-full soft overflow-hidden flex items-center justify-center text-[20px] font-medium text-[#999]">${img ? `<img src="${img}" alt="" class="w-full h-full object-cover">` : pad(n)}</div>
-        <span class="absolute right-0 bottom-0 w-[14px] h-[14px] rounded-full border-2 border-white" style="background:${dot(n)}"></span>
-      </div>
-      <div class="flex-1 min-w-0">
-        <div class="text-[18px] font-medium">Villa ${pad(n)}</div>
-        <div class="text-[14px] sub truncate">${sub(n)}</div>
-      </div>
-      <button data-star="${n}" aria-label="Điểm danh villa ${pad(n)}" class="tap p-2 -mr-1">${star(favs.has(n))}</button>`;
-    list.appendChild(el);
+
+    const el = createRowElement(n);
+    if (done(n)) {
+      completedList.appendChild(el);
+      shownCompleted++;
+    } else {
+      list.appendChild(el);
+      shownPending++;
+    }
   }
-  $('#empty').classList.toggle('hidden', shown > 0);
+
+  if (shownCompleted > 0) {
+    completedSection.classList.remove('hidden');
+    $('#completedBadge').textContent = shownCompleted;
+  } else {
+    completedSection.classList.add('hidden');
+  }
+
+  $('#empty').classList.toggle('hidden', (shownPending + shownCompleted) > 0);
   const d = Array.from({length: TOTAL}, (_, i) => i + 1).filter(done).length;
-  $('#doneNum').textContent = d; $('#totalNum').textContent = TOTAL;
+  $('#doneNum').textContent = d; 
+  $('#totalNum').textContent = TOTAL;
   $('#favCount').textContent = favs.size;
 }
+
+$('#toggleCompleted').onclick = () => {
+  isCompletedExpanded = !isCompletedExpanded;
+  $('#completedList').classList.toggle('hidden', !isCompletedExpanded);
+  $('#collapseIcon').style.transform = isCompletedExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+};
 
 function renderSheet(){
   const p = photos[cur] || {};
@@ -189,12 +240,17 @@ $('#search').oninput = e => { q = e.target.value.trim(); $('#clear').classList.t
 $('#clear').onclick = () => { $('#search').value = ''; q = ''; $('#clear').classList.add('hidden'); $('#clear').classList.remove('flex'); render(); $('#search').focus() };
 
 function toggleFav(n){ favs.has(n) ? favs.delete(n) : favs.add(n); store.set('vi:favs', [...favs]); toast(favs.has(n) ? `Đã điểm danh Villa ${pad(n)}` : `Đã bỏ điểm danh Villa ${pad(n)}`) }
-$('#list').onclick = e => {
+
+function handleListClick(e) {
   const s = e.target.closest('[data-star]');
   if (s){ e.stopPropagation(); toggleFav(+s.dataset.star); render(); return }
   const r = e.target.closest('[data-open]');
   if (r) openVilla(+r.dataset.open);
-};
+}
+
+$('#list').onclick = handleListClick;
+$('#completedList').onclick = handleListClick;
+
 $('#vsStar').onclick = () => { toggleFav(cur); renderSheet() };
 document.querySelectorAll('.slot').forEach(b => b.onclick = () => { slot = b.dataset.slot; $('#cam').click() });
 
@@ -213,7 +269,8 @@ function compressImage(file, maxWidth = 1280, quality = 0.7) {
       img.src = e.target.result;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        let width = img.width, height = img.height;
+        let width = img.width;
+        let height = img.height;
         if (width > maxWidth) {
           height = Math.round((height * maxWidth) / width);
           width = maxWidth;
