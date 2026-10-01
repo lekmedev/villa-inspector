@@ -202,7 +202,9 @@ function render(){
   const d = VILLAS_LIST.filter(done).length;
   $('#doneNum').textContent = d; 
   $('#totalNum').textContent = VILLAS_LIST.length;
-  $('#favCount').textContent = favs.size;
+  // Đếm số lượng căn còn lại chưa làm trong tab Nay làm (chỉ tính căn chưa done)
+  const pendingFavCount = [...favs].filter(n => !done(n)).length;
+  $('#favCount').textContent = pendingFavCount;
 }
 
 $('#toggleCompleted').onclick = () => {
