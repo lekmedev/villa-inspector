@@ -1,0 +1,138 @@
+const PARENT_FOLDER_ID = "YOUR_PARENT_FOLDER_ID_HERE"; // Thay ID thu muc Google Drive
+const SPREADSHEET_ID = "YOUR_SPREADSHEET_ID_HERE";     // Thay ID Google Sheet
+const SHEET_NAME = "Trang tính1";                      // Doi ten Sheet neu can
+
+function doGet(e) {
+  return ContentService.createTextOutput(
+    JSON.stringify({ status: "success", message: "Web App is online." })
+  ).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+
+    const data = JSON.parse(e.postData.contents);
+    const villaId = String(data.villaId).trim();
+    const type = String(data.type).toLowerCase().trim(); // "before" | "after"
+    const rawImage = data.image;
+    const mimeType = data.mimeType || "image/jpeg";
+
+    if (!villaId || !type || !rawImage) {
+      throw new Error("Missing required fields: villaId, type, image");
+    }
+
+    // 1. Quan ly thu muc theo tung Villa tren Google Drive
+    const parentFolder = DriveApp.getFolderById(PARENT_FOLDER_ID);
+    const subFolderIter = parentFolder.getFoldersByName(`Villa_${villaId}`);
+    const villaFolder = subFolderIter.hasNext()
+      ? subFolderIter.next()
+      : parentFolder.createFolder(`Villa_${villaId}`);
+
+    // 2. Decode Base64 & Tao file anh
+    const base64Data = rawImage.replace(/^data:image\/\w+;base64,/, "");
+    const decodedBlob = Utilities.newBlob(
+      Utilities.base64Decode(base64Data),
+      mimeType
+    );
+
+    const now = new Date();
+    const timestampStr = Utilities.formatDate(
+      now,
+      Session.getScriptTimeZone() || "GMT+7",
+      "yyyy-MM-dd_HHmmss"
+    );
+    const timeDisplay = Utilities.formatDate(
+      now,
+      Session.getScriptTimeZone() || "GMT+7",
+      "yyyy-MM-dd HH:mm:ss"
+    );
+    const fileName = `Villa_${villaId}_${type}_${timestampStr}.jpg`;
+
+    decodedBlob.setName(fileName);
+    const createdFile = villaFolder.createFile(decodedBlob);
+    createdFile.setSharing(
+      DriveApp.Access.ANYONE_WITH_LINK,
+      DriveApp.Permission.VIEW
+    );
+    const fileUrl = createdFile.getUrl();
+
+    // 3. Ghi log & Cap nhat vao Google Sheet
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
+
+    // Tao Header neu trang tinh con moi
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow([
+        "Mã Villa",
+        "Ảnh Trước (URL)",
+        "Thời Gian Trước",
+        "Ảnh Sau (URL)",
+        "Thời Gian Sau",
+        "Trạng Thái"
+      ]);
+      sheet.getRange(1, 1, 1, 6).setFontWeight("bold").setBackground("#f3f4f6");
+    }
+
+    const rows = sheet.getDataRange().getValues();
+    let targetRowIndex = -1;
+
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]).trim() === villaId) {
+        targetRowIndex = i + 1;
+        break;
+      }
+    }
+
+    if (targetRowIndex === -1) {
+      // Them dong moi neu chua co
+      const newRow = [
+        villaId,
+        type === "before" ? fileUrl : "",
+        type === "before" ? timeDisplay : "",
+        type === "after" ? fileUrl : "",
+        type === "after" ? timeDisplay : "",
+        "Chưa hoàn thành"
+      ];
+      sheet.appendRow(newRow);
+      targetRowIndex = sheet.getLastRow();
+    } else {
+      // Cap nhat URL anh va thoi gian
+      if (type === "before") {
+        sheet.getRange(targetRowIndex, 2).setValue(fileUrl);
+        sheet.getRange(targetRowIndex, 3).setValue(timeDisplay);
+      } else if (type === "after") {
+        sheet.getRange(targetRowIndex, 4).setValue(fileUrl);
+        sheet.getRange(targetRowIndex, 5).setValue(timeDisplay);
+      }
+    }
+
+    // Danh gia trang thai hoan thanh
+    const beforeUrlVal = sheet.getRange(targetRowIndex, 2).getValue();
+    const afterUrlVal = sheet.getRange(targetRowIndex, 4).getValue();
+    const isCompleted = Boolean(beforeUrlVal && afterUrlVal);
+
+    sheet.getRange(targetRowIndex, 6).setValue(isCompleted ? "Hoàn Thành" : "Chưa hoàn thành");
+
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        status: "success",
+        fileUrl: fileUrl,
+        villaId: villaId,
+        type: type,
+        isCompleted: isCompleted
+      })
+    ).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        status: "error",
+        message: err.message
+      })
+    ).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
+}

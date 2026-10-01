@@ -1,0 +1,15 @@
+services:
+  baotri-web:
+    image: nginx:alpine
+    container_name: baotri-web
+    restart: unless-stopped
+    volumes:
+      - ./public:/usr/share/nginx/html:ro
+    ports:
+      - "127.0.0.1:8092:80"
+    networks:
+      - hermes-webui_default
+
+networks:
+  hermes-webui_default:
+    external: true

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Bảo trì villa</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+  }
+</script>
+<style>
+html,body{background:#000;color:#fff}
+html.light,html.light body{background:#fff;color:#000}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+
+.sub{color:rgba(235,235,245,.6)}
+.light .sub{color:rgba(60,60,67,.6)}
+
+.fill{background:rgba(255,255,255,.1)}
+.light .fill{background:rgba(120,120,128,.12)}
+
+.line{border-bottom:.5px solid rgba(255,255,255,.15)}
+.light .line{border-bottom:.5px solid rgba(60,60,67,.18)}
+
+.tap{transition:transform .15s,opacity .15s}.tap:active{transform:scale(.96);opacity:.7}
+.sheet{transition:transform .35s cubic-bezier(.32,.72,0,1)}
+.fade{transition:opacity .3s}
+.pill{transition:transform .45s cubic-bezier(.3,1.3,.5,1),opacity .3s}
+.thumb{transition:transform .25s cubic-bezier(.3,1.2,.5,1)}
+.bar i{transition:width .5s cubic-bezier(.32,.72,0,1)}
+input[type=search]::-webkit-search-cancel-button{display:none}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body class="bg-black text-white dark:bg-black dark:text-white transition-colors duration-200">
+
+<div id="toast" class="pill fixed left-1/2 z-[60] -translate-x-1/2 -translate-y-24 opacity-0 bg-white text-black dark:bg-white dark:text-black text-[14px] font-medium rounded-full px-5 py-2.5 shadow-2xl" style="top:calc(env(safe-area-inset-top,0px) + 10px)"><span id="toastText"></span></div>
+
+<main class="max-w-xl mx-auto px-5 pb-16" style="padding-top:calc(env(safe-area-inset-top,0px) + 12px)">
+  <div class="flex items-center justify-between h-10">
+    <span class="text-[15px] sub">Chụp hình dạo</span>
+    <div class="flex items-center gap-2">
+      <!-- Dark/Light Mode Toggle -->
+      <button id="btnTheme" aria-label="Đổi giao diện" class="tap w-8 h-8 rounded-full fill flex items-center justify-center text-white dark:text-white light:text-black">
+        <span id="themeIcon" class="text-sm">🌙</span>
+      </button>
+      <!-- Settings Button -->
+      <button id="btnSettings" aria-label="Cài đặt" class="tap w-8 h-8 rounded-full fill flex items-center justify-center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+      </button>
+    </div>
+  </div>
+  <h1 class="text-[34px] font-bold tracking-tight mt-1 mb-5">Bảo trì villa</h1>
+
+  <section class="mb-6">
+    <div class="flex items-baseline justify-between mb-2">
+      <span class="text-[15px] sub">Tiến độ hôm nay</span>
+      <span class="text-[15px] font-semibold"><span id="doneNum">0</span> / <span id="totalNum">80</span></span>
+    </div>
+    <div class="bar h-1 rounded-full fill overflow-hidden"><i class="block h-full bg-white dark:bg-white light:bg-black rounded-full" style="width:0"></i></div>
+  </section>
+
+  <div class="relative flex p-[2px] rounded-[9px] fill mb-3" role="tablist">
+    <div id="segThumb" class="thumb absolute top-[2px] bottom-[2px] left-[2px] w-[calc(50%-2px)] rounded-[7px] bg-[#2c2c2e] dark:bg-[#2c2c2e] light:bg-white" style="box-shadow:0 2px 6px rgba(0,0,0,.3)"></div>
+    <button data-tab="all" role="tab" class="seg relative z-10 flex-1 py-1.5 text-[13px] font-semibold">Tất cả</button>
+    <button data-tab="fav" role="tab" class="seg relative z-10 flex-1 py-1.5 text-[13px] font-semibold">Nay làm... <span id="favCount" class="sub font-medium">0</span></button>
+  </div>
+
+  <div class="relative mb-2">
+    <svg class="absolute left-3 top-1/2 -translate-y-1/2 sub" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <input id="search" type="search" inputmode="numeric" placeholder="Tìm số villa" autocomplete="off" class="w-full h-9 pl-9 pr-9 rounded-[10px] fill text-[17px] outline-none text-white dark:text-white light:text-black placeholder:text-[rgba(235,235,245,.6)] light:placeholder:text-[rgba(60,60,67,.6)]">
+    <button id="clear" aria-label="Xoá" class="tap hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-[rgba(235,235,245,.3)] light:bg-[rgba(60,60,67,.35)] text-white text-[11px] leading-none items-center justify-center">✕</button>
+  </div>
+
+  <!-- Danh sách Chưa hoàn thành -->
+  <div id="pendingList"></div>
+  <p id="empty" class="hidden text-center text-[15px] sub py-16">Không có villa nào khớp.</p>
+
+  <!-- Danh sách Đã hoàn thành (Collapse / Expand) -->
+  <div id="completedSection" class="mt-6 pt-2 border-t border-white/10 light:border-black/10 hidden">
+    <button id="toggleCompleted" class="tap w-full flex items-center justify-between py-3 text-left">
+      <div class="flex items-center gap-2">
+        <span class="text-[17px] font-semibold text-white/80 light:text-black/80">Đã hoàn thành</span>
+        <span id="completedBadge" class="text-[12px] font-semibold px-2 py-0.5 rounded-full fill text-white/70 light:text-black/70">0</span>
+      </div>
+      <svg id="collapseIcon" class="w-4 h-4 text-white/40 light:text-black/40 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 9 6 6 6-6"/>
+      </svg>
+    </button>
+    <div id="completedList" class="hidden"></div>
+  </div>
+</main>
+
+<input id="cam" type="file" accept="image/*" capture="environment" class="hidden">
+
+<div id="scrim" class="fade fixed inset-0 z-50 bg-black/60 opacity-0 pointer-events-none"></div>
+
+<div id="photoSheet" class="sheet fixed inset-x-0 bottom-0 z-[55] translate-y-full rounded-t-[24px] bg-[#1c1c1e] text-white dark:bg-[#1c1c1e] dark:text-white light:bg-white light:text-black max-w-xl mx-auto" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + 12px);box-shadow:0 -8px 40px rgba(0,0,0,.4)">
+  <div class="w-9 h-1 rounded-full bg-white/20 light:bg-black/15 mx-auto mt-2.5 mb-4"></div>
+  <div class="px-5 pb-3"><div id="shTitle" class="text-[20px] font-semibold">Villa 01</div><div id="shSub" class="text-[13px] sub">Ảnh trước dọn</div></div>
+  <div class="px-5"><img id="shImg" alt="Ảnh villa" class="w-full max-h-[48vh] object-cover rounded-2xl fill"></div>
+  <div class="px-5 mt-4 space-y-2">
+    <button id="shRetake" class="tap w-full h-12 rounded-[14px] bg-white text-black dark:bg-white dark:text-black light:bg-black light:text-white text-[17px] font-semibold">Chụp lại</button>
+    <button data-close class="tap w-full h-12 rounded-[14px] fill text-[17px] font-semibold">Đóng</button>
+  </div>
+</div>
+
+<div id="setSheet" class="sheet fixed inset-x-0 bottom-0 z-[55] translate-y-full rounded-t-[24px] bg-[#1c1c1e] text-white dark:bg-[#1c1c1e] dark:text-white light:bg-white light:text-black max-w-xl mx-auto" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + 12px);box-shadow:0 -8px 40px rgba(0,0,0,.4)">
+  <div class="w-9 h-1 rounded-full bg-white/20 light:bg-black/15 mx-auto mt-2.5 mb-4"></div>
+  <div class="px-5 pb-3"><div class="text-[20px] font-semibold">Kết nối Google Sheets</div>
+  <div class="text-[13px] sub mt-0.5">Dán địa chỉ Web App (doPost) của Apps Script để gửi ảnh lên.</div></div>
+  <div class="px-5"><input id="gasUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" class="w-full h-11 px-4 rounded-[12px] fill text-[15px] outline-none text-white dark:text-white light:text-black"></div>
+  <div class="px-5 mt-4 grid grid-cols-2 gap-2">
+    <button data-close class="tap h-12 rounded-[14px] fill text-[17px] font-semibold">Đóng</button>
+    <button id="gasSave" class="tap h-12 rounded-[14px] bg-white text-black dark:bg-white dark:text-black light:bg-black light:text-white text-[17px] font-semibold">Lưu</button>
+  </div>
+</div>
+
+<script>
+const TOTAL = 80;
+// Bỏ qua villa 13 theo phong tục / quy hoạch (1..80 trừ 13)
+const VILLAS_LIST = Array.from({length: TOTAL}, (_, i) => i + 1).filter(n => n !== 13);
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2, '0');
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d } catch(e){ return d } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)) } catch(e){} }
+};
+
+// Theme Management (Default = Dark)
+let currentTheme = store.get('vi:theme', 'dark');
+function applyTheme(theme) {
+  currentTheme = theme;
+  store.set('vi:theme', theme);
+  const html = document.documentElement;
+  const icon = $('#themeIcon');
+  const segThumb = $('#segThumb');
+  
+  if (theme === 'dark') {
+    html.classList.add('dark');
+    html.classList.remove('light');
+    icon.textContent = '🌙';
+    $('meta[name="theme-color"]').setAttribute('content', '#000000');
+    if (segThumb) {
+      segThumb.classList.add('bg-[#2c2c2e]');
+      segThumb.classList.remove('bg-white');
+    }
+  } else {
+    html.classList.remove('dark');
+    html.classList.add('light');
+    icon.textContent = '☀️';
+    $('meta[name="theme-color"]').setAttribute('content', '#ffffff');
+    if (segThumb) {
+      segThumb.classList.remove('bg-[#2c2c2e]');
+      segThumb.classList.add('bg-white');
+    }
+  }
+}
+$('#btnTheme').onclick = () => {
+  applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+  render();
+};
+
+let favs = new Set(store.get('vi:favs', []));
+let photos = store.get('vi:photos', {});
+let tab = 'fav'; // Mặc định mở vào "Nay làm..."
+let q = '', target = null;
+let isCompletedExpanded = false;
+
+const done = n => !!(photos[n] && photos[n].before && photos[n].after);
+
+const starSvg = on => {
+  const isDark = currentTheme === 'dark';
+  const stroke = isDark ? '#fff' : '#000';
+  const fill = on ? (isDark ? '#fff' : '#000') : 'none';
+  return `<svg width="22" height="22" viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" stroke-width="1.8" stroke-linejoin="round" style="opacity:${on ? 1 : .25}"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>`;
+};
+
+function btn(n, kind, url){
+  const label = kind === 'before' ? 'Trước' : 'Sau';
+  const isDark = currentTheme === 'dark';
+  const checkStroke = isDark ? '#fff' : '#000';
+  
+  if (url) return `<button data-view="${n}:${kind}" aria-label="Xem ảnh ${label.toLowerCase()}" class="tap h-12 rounded-[12px] fill flex items-center gap-2.5 pl-1.5 pr-3 text-left">
+    <img src="${url}" alt="" class="w-9 h-9 rounded-[8px] object-cover">
+    <span class="flex-1 text-[15px] font-medium">${label}</span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${checkStroke}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></button>`;
+  return `<button data-snap="${n}:${kind}" class="tap h-12 rounded-[12px] border border-white/20 light:border-black/15 flex items-center justify-center gap-2 text-[15px] font-medium">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>${label}</button>`;
+}
+
+function createVillaElement(n){
+  const p = photos[n] || {};
+  const isDone = done(n);
+  const st = isDone ? 'Hoàn thành' : (p.before || p.after) ? 'Đang làm' : 'Chờ kiểm tra';
+  const el = document.createElement('div');
+  el.className = 'line py-4';
+  el.innerHTML = `
+    <div class="flex items-center gap-3 mb-3">
+      <button data-star="${n}" aria-label="Điểm danh villa ${pad(n)}" class="tap -ml-1 p-1">${starSvg(favs.has(n))}</button>
+      <div class="flex-1 text-[19px] font-semibold tracking-tight">Villa ${pad(n)}</div>
+      <span class="text-[13px] ${isDone ? 'font-semibold text-emerald-400 light:text-emerald-600' : 'sub'}">${st}</span>
+    </div>
+    <div class="grid grid-cols-2 gap-2">${btn(n,'before',p.before)}${btn(n,'after',p.after)}</div>`;
+  return el;
+}
+
+function render(){
+  const pendingList = $('#pendingList');
+  const completedList = $('#completedList');
+  const completedSection = $('#completedSection');
+  
+  pendingList.innerHTML = '';
+  completedList.innerHTML = '';
+  
+  let shownPending = 0;
+  let shownCompleted = 0;
+
+  for (const n of VILLAS_LIST){
+    if (tab === 'fav' && !favs.has(n)) continue;
+    if (q && !pad(n).includes(q) && !String(n).includes(q)) continue;
+
+    const el = createVillaElement(n);
+    if (done(n)) {
+      completedList.appendChild(el);
+      shownCompleted++;
+    } else {
+      pendingList.appendChild(el);
+      shownPending++;
+    }
+  }
+
+  if (shownCompleted > 0) {
+    completedSection.classList.remove('hidden');
+    $('#completedBadge').textContent = shownCompleted;
+  } else {
+    completedSection.classList.add('hidden');
+  }
+
+  let emptyMsg = 'Không có villa nào khớp.';
+  if (tab === 'fav' && favs.size === 0 && !q) {
+    emptyMsg = 'Chưa chọn căn nào vào mục "Nay làm...". Bấm sao ☆ ở tab Tất cả để chọn.';
+  }
+  $('#empty').textContent = emptyMsg;
+  $('#empty').classList.toggle('hidden', (shownPending + shownCompleted) > 0);
+
+  const d = VILLAS_LIST.filter(done).length;
+  $('#doneNum').textContent = d; 
+  $('#totalNum').textContent = VILLAS_LIST.length;
+  $('.bar i').style.width = (d / VILLAS_LIST.length * 100) + '%';
+  $('#favCount').textContent = favs.size;
+}
+
+$('#toggleCompleted').onclick = () => {
+  isCompletedExpanded = !isCompletedExpanded;
+  $('#completedList').classList.toggle('hidden', !isCompletedExpanded);
+  $('#collapseIcon').style.transform = isCompletedExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+};
+
+let tt;
+function toast(msg){
+  $('#toastText').textContent = msg;
+  const t = $('#toast'); t.classList.remove('-translate-y-24','opacity-0');
+  clearTimeout(tt); tt = setTimeout(() => t.classList.add('-translate-y-24','opacity-0'), 2200);
+}
+
+const openSheet = id => { $('#scrim').classList.remove('opacity-0','pointer-events-none'); $(id).classList.remove('translate-y-full') };
+function closeSheets(){ $('#scrim').classList.add('opacity-0','pointer-events-none'); document.querySelectorAll('.sheet').forEach(s => s.classList.add('translate-y-full')) }
+$('#scrim').onclick = closeSheets;
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeSheets);
+
+function setTab(t){
+  tab = t;
+  $('#segThumb').style.transform = t === 'all' ? 'translateX(0)' : 'translateX(100%)';
+  document.querySelectorAll('.seg').forEach(b => b.style.opacity = b.dataset.tab === t ? 1 : .55);
+  render();
+}
+document.querySelectorAll('.seg').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+
+$('#search').oninput = e => { q = e.target.value.trim(); $('#clear').classList.toggle('hidden', !q); $('#clear').classList.toggle('flex', !!q); render() };
+$('#clear').onclick = () => { $('#search').value = ''; q = ''; $('#clear').classList.add('hidden'); $('#clear').classList.remove('flex'); render() };
+
+function handleListClick(e) {
+  const s = e.target.closest('[data-star]'), sn = e.target.closest('[data-snap]'), v = e.target.closest('[data-view]');
+  if (s){ 
+    const n = +s.dataset.star; 
+    favs.has(n) ? favs.delete(n) : favs.add(n); 
+    store.set('vi:favs', [...favs]); 
+    toast(favs.has(n) ? `Đã thêm Villa ${pad(n)} vào Nay làm...` : `Đã bỏ Villa ${pad(n)}`); 
+    render(); 
+  }
+  else if (sn){ 
+    const [n, k] = sn.dataset.snap.split(':'); 
+    target = {n: +n, k}; 
+    $('#cam').click(); 
+  }
+  else if (v){ 
+    const [n, k] = v.dataset.view.split(':'); 
+    target = {n: +n, k};
+    $('#shTitle').textContent = 'Villa ' + pad(n); 
+    $('#shSub').textContent = k === 'before' ? 'Ảnh trước dọn' : 'Ảnh sau dọn';
+    $('#shImg').src = photos[n][k]; 
+    openSheet('#photoSheet'); 
+  }
+}
+
+$('#pendingList').onclick = handleListClick;
+$('#completedList').onclick = handleListClick;
+
+$('#shRetake').onclick = () => { closeSheets(); setTimeout(() => $('#cam').click(), 250) };
+
+function compressImage(file, maxWidth = 1280, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+    };
+    reader.onerror = reject;
+  });
+}
+
+$('#cam').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f || !target) return;
+  const {n, k} = target;
+  
+  toast(`Đang nén và gửi ảnh Villa ${pad(n)}...`);
+  try {
+    const b64 = await compressImage(f, 1280, 0.7);
+    photos[n] = photos[n] || {};
+    photos[n][k] = b64;
+    store.set('vi:photos', photos);
+    render();
+
+    const gas = store.get('vi:gas', '');
+    if (gas) {
+      const res = await fetch(gas, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          villaId: `Villa ${pad(n)}`,
+          type: k,
+          image: b64,
+          mimeType: 'image/jpeg'
+        })
+      });
+      const result = await res.json();
+      if (result.status === 'success') {
+        toast(`Villa ${pad(n)}: đã lưu và tải lên Drive ✓`);
+      } else {
+        toast(`Lỗi Drive: ${result.message || 'Thất bại'}`);
+      }
+    } else {
+      toast(`Villa ${pad(n)}: đã lưu trên máy (chưa nối Google)`);
+    }
+  } catch(err) {
+    console.error(err);
+    toast(`Villa ${pad(n)}: đã lưu ảnh cục bộ`);
+  }
+};
+
+$('#btnSettings').onclick = () => { $('#gasUrl').value = store.get('vi:gas', ''); openSheet('#setSheet') };
+$('#gasSave').onclick = () => { store.set('vi:gas', $('#gasUrl').value.trim()); closeSheets(); toast('Đã lưu cài đặt') };
+
+// Khởi chạy
+applyTheme(currentTheme);
+setTab('fav'); // Focus vào "Nay làm..." khi mở web
+</script>
+</body>
+</html>
