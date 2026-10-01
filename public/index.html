@@ -112,13 +112,22 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 </div>
 
 <script>
+// CẤU HÌNH MẶC ĐỊNH
+const DEFAULT_GAS_URL = ""; 
+
 const TOTAL = 80;
+// Bỏ qua villa 13 theo phong tục / quy hoạch (1..80 trừ 13)
+const VILLAS_LIST = Array.from({length: TOTAL}, (_, i) => i + 1).filter(n => n !== 13);
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
 const store = {
   get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d } catch(e){ return d } },
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)) } catch(e){} }
 };
+
+function getGasEndpoint() {
+  return store.get('vi:gas', '') || DEFAULT_GAS_URL;
+}
 let favs = new Set(store.get('vi:favs', []));
 let photos = store.get('vi:photos', {});
 let tab = 'fav'; // Mặc định mở tab Điểm danh
@@ -162,7 +171,7 @@ function render(){
   let shownPending = 0;
   let shownCompleted = 0;
 
-  for (let n = 1; n <= TOTAL; n++){
+  for (const n of VILLAS_LIST){
     if (tab === 'fav' && !favs.has(n)) continue;
     if (q && !pad(n).includes(q) && !String(n).includes(q)) continue;
 
@@ -190,9 +199,9 @@ function render(){
   $('#empty').textContent = emptyMsg;
   $('#empty').classList.toggle('hidden', (shownPending + shownCompleted) > 0);
   
-  const d = Array.from({length: TOTAL}, (_, i) => i + 1).filter(done).length;
+  const d = VILLAS_LIST.filter(done).length;
   $('#doneNum').textContent = d; 
-  $('#totalNum').textContent = TOTAL;
+  $('#totalNum').textContent = VILLAS_LIST.length;
   $('#favCount').textContent = favs.size;
 }
 
@@ -300,7 +309,7 @@ $('#cam').onchange = async e => {
     renderSheet();
     render();
 
-    const gas = store.get('vi:gas', '');
+    const gas = getGasEndpoint();
     if (gas){
       const res = await fetch(gas, {
         method: 'POST',
