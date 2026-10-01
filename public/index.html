@@ -1,18 +1,23 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" class="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#121212">
 <title>Villa Inspector</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+  }
+</script>
 <style>
-html,body{background:#f5f5f5;height:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased;color:#2b2b2b;-webkit-tap-highlight-color:transparent}
-.sub{color:#777}
-.soft{background:#f4f4f4}
+html,body{background:#121212;height:100%;color:#e5e5ea}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased;color:#e5e5ea;-webkit-tap-highlight-color:transparent}
+.sub{color:#8e8e93}
+.soft{background:#1c1c1e}
 .tap{transition:transform .15s,background .15s}.tap:active{transform:scale(.96)}
-.row:active{background:#fafafa}
+.row:active{background:#242426}
 .sheet{transition:transform .35s cubic-bezier(.32,.72,0,1)}
 .fade{transition:opacity .3s}
 .pill{transition:transform .45s cubic-bezier(.3,1.3,.5,1),opacity .3s}
@@ -21,40 +26,40 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
-<body>
+<body class="bg-[#121212]">
 
-<div id="toast" class="pill fixed left-1/2 z-[60] -translate-x-1/2 -translate-y-24 opacity-0 bg-black text-white text-[14px] font-medium rounded-full px-5 py-2.5" style="top:calc(env(safe-area-inset-top,0px) + 10px)"><span id="toastText"></span></div>
+<div id="toast" class="pill fixed left-1/2 z-[60] -translate-x-1/2 -translate-y-24 opacity-0 bg-white text-black text-[14px] font-medium rounded-full px-5 py-2.5 shadow-2xl" style="top:calc(env(safe-area-inset-top,0px) + 10px)"><span id="toastText"></span></div>
 
-<div class="relative max-w-md mx-auto min-h-full bg-white sm:my-6 sm:rounded-2xl sm:min-h-[calc(100%-3rem)] sm:shadow-[0_10px_40px_rgba(0,0,0,.08)]">
+<div class="relative max-w-md mx-auto min-h-full bg-[#18181a] sm:my-6 sm:rounded-2xl sm:min-h-[calc(100%-3rem)] sm:shadow-[0_10px_40px_rgba(0,0,0,.5)] border border-white/5">
 
   <!-- Header -->
-  <header class="sticky top-0 z-30 bg-white sm:rounded-t-2xl" style="padding-top:env(safe-area-inset-top,0px);box-shadow:0 6px 14px -8px rgba(0,0,0,.12)">
+  <header class="sticky top-0 z-30 bg-[#18181a] sm:rounded-t-2xl border-b border-white/5" style="padding-top:env(safe-area-inset-top,0px)">
     <div class="h-16 px-5 grid grid-cols-[40px_1fr_40px] items-center">
-      <button id="btnMenu" aria-label="Cài đặt" class="tap w-10 h-10 -ml-2 flex items-center justify-center text-[#aaa]">
+      <button id="btnMenu" aria-label="Cài đặt" class="tap w-10 h-10 -ml-2 flex items-center justify-center text-[#8e8e93] hover:text-white">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7h16M7 12h13M10 17h10"/></svg>
       </button>
       <div class="text-center leading-tight">
-        <div class="text-[20px] font-medium text-[#555]">Villa Inspector</div>
+        <div class="text-[20px] font-medium text-[#f2f2f7]">Villa Inspector</div>
         <div class="text-[12px] sub"><span id="doneNum">0</span> / <span id="totalNum">80</span> hoàn thành</div>
       </div>
-      <button id="btnSearch" aria-label="Tìm kiếm" class="tap w-10 h-10 -mr-2 flex items-center justify-center text-[#aaa] justify-self-end">
+      <button id="btnSearch" aria-label="Tìm kiếm" class="tap w-10 h-10 -mr-2 flex items-center justify-center text-[#8e8e93] hover:text-white justify-self-end">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
       </button>
     </div>
     <div id="searchWrap" class="overflow-hidden transition-all duration-300" style="max-height:0">
       <div class="px-5 pb-3 relative">
-        <input id="search" type="search" inputmode="numeric" placeholder="Tìm số villa" autocomplete="off" class="w-full h-10 px-4 pr-10 rounded-full soft text-[16px] outline-none placeholder:text-[#aaa]">
-        <button id="clear" aria-label="Xoá" class="tap hidden absolute right-8 top-[calc(50%-6px)] -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-[#bbb] text-white text-[11px] leading-none items-center justify-center">✕</button>
+        <input id="search" type="search" inputmode="numeric" placeholder="Tìm số villa" autocomplete="off" class="w-full h-10 px-4 pr-10 rounded-full soft text-[16px] text-white outline-none placeholder:text-[#636366]">
+        <button id="clear" aria-label="Xoá" class="tap hidden absolute right-8 top-[calc(50%-6px)] -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-[#48484a] text-white text-[11px] leading-none items-center justify-center">✕</button>
       </div>
     </div>
   </header>
 
   <!-- Segmented -->
   <div class="px-5 pt-4">
-    <div class="relative flex p-[2px] rounded-full soft">
-      <div id="segThumb" class="seg-t absolute top-[2px] bottom-[2px] left-[2px] w-[calc(50%-2px)] rounded-full bg-white" style="box-shadow:0 1px 4px rgba(0,0,0,.1)"></div>
-      <button data-tab="all" class="seg relative z-10 flex-1 py-1.5 text-[14px] font-medium">Tất cả</button>
-      <button data-tab="fav" class="seg relative z-10 flex-1 py-1.5 text-[14px] font-medium">Điểm danh <span id="favCount" class="sub">0</span></button>
+    <div class="relative flex p-[2px] rounded-full soft border border-white/5">
+      <div id="segThumb" class="seg-t absolute top-[2px] bottom-[2px] left-[2px] w-[calc(50%-2px)] rounded-full bg-[#2c2c2e]" style="box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>
+      <button data-tab="fav" class="seg relative z-10 flex-1 py-1.5 text-[14px] font-medium text-white">Điểm danh <span id="favCount" class="sub">0</span></button>
+      <button data-tab="all" class="seg relative z-10 flex-1 py-1.5 text-[14px] font-medium text-white">Tất cả</button>
     </div>
   </div>
 
@@ -63,53 +68,46 @@ input[type=search]::-webkit-search-cancel-button{display:none}
   <p id="empty" class="hidden text-center text-[15px] sub py-20">Không có villa nào khớp.</p>
 
   <!-- Section Đã hoàn thành (Collapse / Thu gọn) -->
-  <div id="completedSection" class="px-3 pt-4 pb-32 border-t border-[#f0f0f0] mt-4 hidden">
+  <div id="completedSection" class="px-3 pt-4 pb-20 border-t border-white/5 mt-4 hidden">
     <button id="toggleCompleted" class="tap w-full flex items-center justify-between py-2 px-2 rounded-xl text-left">
       <div class="flex items-center gap-2">
-        <span class="text-[15px] font-medium text-[#777]">Đã hoàn thành</span>
-        <span id="completedBadge" class="text-[12px] font-medium px-2 py-0.5 rounded-full soft text-[#666]">0</span>
+        <span class="text-[15px] font-medium text-[#8e8e93]">Đã hoàn thành</span>
+        <span id="completedBadge" class="text-[12px] font-medium px-2 py-0.5 rounded-full soft text-[#aeaeb2]">0</span>
       </div>
-      <svg id="collapseIcon" class="w-4 h-4 text-[#aaa] transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg id="collapseIcon" class="w-4 h-4 text-[#8e8e93] transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="m6 9 6 6 6-6"/>
       </svg>
     </button>
     <div id="completedList" class="mt-1 hidden"></div>
   </div>
-
-  <!-- FAB -->
-  <div class="sticky bottom-0 z-30 h-0 pointer-events-none">
-    <button id="fab" aria-label="Chụp villa tiếp theo" class="tap pointer-events-auto absolute right-5 w-16 h-16 rounded-full bg-white flex items-center justify-center text-[#777]" style="bottom:calc(env(safe-area-inset-bottom,0px) + 24px);box-shadow:0 6px 20px rgba(0,0,0,.14)">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-    </button>
-  </div>
 </div>
 
 <input id="cam" type="file" accept="image/*" capture="environment" class="hidden">
-<div id="scrim" class="fade fixed inset-0 z-50 bg-black/30 opacity-0 pointer-events-none"></div>
+<div id="scrim" class="fade fixed inset-0 z-50 bg-black/60 opacity-0 pointer-events-none backdrop-blur-xs"></div>
 
 <!-- Villa sheet -->
-<div id="villaSheet" class="sheet fixed inset-x-0 bottom-0 z-[55] translate-y-full rounded-t-3xl bg-white max-w-md mx-auto" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px);box-shadow:0 -8px 40px rgba(0,0,0,.12)">
-  <div class="w-9 h-1 rounded-full bg-black/15 mx-auto mt-2.5 mb-4"></div>
+<div id="villaSheet" class="sheet fixed inset-x-0 bottom-0 z-[55] translate-y-full rounded-t-3xl bg-[#1c1c1e] text-white max-w-md mx-auto border-t border-white/10" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px);box-shadow:0 -8px 40px rgba(0,0,0,.5)">
+  <div class="w-9 h-1 rounded-full bg-white/20 mx-auto mt-2.5 mb-4"></div>
   <div class="px-6 flex items-center justify-between">
-    <div><div id="vsTitle" class="text-[22px] font-medium">Villa 01</div><div id="vsSub" class="text-[13px] sub">Chưa có ảnh</div></div>
+    <div><div id="vsTitle" class="text-[22px] font-medium text-white">Villa 01</div><div id="vsSub" class="text-[13px] sub">Chưa có ảnh</div></div>
     <button id="vsStar" aria-label="Điểm danh" class="tap p-2 -mr-2"></button>
   </div>
   <div class="px-6 mt-4 grid grid-cols-2 gap-3">
-    <button data-slot="before" class="slot tap aspect-[4/5] rounded-2xl soft overflow-hidden relative flex flex-col items-center justify-center text-[#999]"></button>
-    <button data-slot="after" class="slot tap aspect-[4/5] rounded-2xl soft overflow-hidden relative flex flex-col items-center justify-center text-[#999]"></button>
+    <button data-slot="before" class="slot tap aspect-[4/5] rounded-2xl bg-[#2c2c2e] overflow-hidden relative flex flex-col items-center justify-center text-[#8e8e93] border border-white/5"></button>
+    <button data-slot="after" class="slot tap aspect-[4/5] rounded-2xl bg-[#2c2c2e] overflow-hidden relative flex flex-col items-center justify-center text-[#8e8e93] border border-white/5"></button>
   </div>
-  <div class="px-6 mt-4"><button data-close class="tap w-full h-12 rounded-full soft text-[16px] font-medium">Xong</button></div>
+  <div class="px-6 mt-4"><button data-close class="tap w-full h-12 rounded-full bg-[#2c2c2e] text-[16px] font-medium text-white hover:bg-[#3a3a3c]">Xong</button></div>
 </div>
 
 <!-- Settings sheet -->
-<div id="setSheet" class="sheet fixed inset-x-0 bottom-0 z-[55] translate-y-full rounded-t-3xl bg-white max-w-md mx-auto" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px);box-shadow:0 -8px 40px rgba(0,0,0,.12)">
-  <div class="w-9 h-1 rounded-full bg-black/15 mx-auto mt-2.5 mb-4"></div>
-  <div class="px-6 pb-3"><div class="text-[22px] font-medium">Kết nối Google Sheets</div>
+<div id="setSheet" class="sheet fixed inset-x-0 bottom-0 z-[55] translate-y-full rounded-t-3xl bg-[#1c1c1e] text-white max-w-md mx-auto border-t border-white/10" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px);box-shadow:0 -8px 40px rgba(0,0,0,.5)">
+  <div class="w-9 h-1 rounded-full bg-white/20 mx-auto mt-2.5 mb-4"></div>
+  <div class="px-6 pb-3"><div class="text-[22px] font-medium text-white">Kết nối Google Sheets</div>
   <div class="text-[13px] sub mt-0.5">Dán địa chỉ Web App (doPost) của Apps Script để gửi ảnh lên.</div></div>
-  <div class="px-6"><input id="gasUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" class="w-full h-11 px-4 rounded-full soft text-[15px] outline-none"></div>
+  <div class="px-6"><input id="gasUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" class="w-full h-11 px-4 rounded-full bg-[#2c2c2e] text-white text-[15px] outline-none border border-white/5"></div>
   <div class="px-6 mt-4 grid grid-cols-2 gap-2">
-    <button data-close class="tap h-12 rounded-full soft text-[16px] font-medium">Đóng</button>
-    <button id="gasSave" class="tap h-12 rounded-full bg-[#2b2b2b] text-white text-[16px] font-medium">Lưu</button>
+    <button data-close class="tap h-12 rounded-full bg-[#2c2c2e] text-white text-[16px] font-medium">Đóng</button>
+    <button id="gasSave" class="tap h-12 rounded-full bg-white text-black text-[16px] font-semibold">Lưu</button>
   </div>
 </div>
 
@@ -123,7 +121,8 @@ const store = {
 };
 let favs = new Set(store.get('vi:favs', []));
 let photos = store.get('vi:photos', {});
-let tab = 'all', q = '', cur = null, slot = null;
+let tab = 'fav'; // Mặc định mở tab Điểm danh
+let q = '', cur = null, slot = null;
 let isCompletedExpanded = false;
 
 const done = n => !!(photos[n] && photos[n].before && photos[n].after);
@@ -131,8 +130,8 @@ const started = n => !!(photos[n] && (photos[n].before || photos[n].after));
 const sub = n => done(n) ? 'Đã chụp đủ ảnh trước và sau'
   : started(n) ? (photos[n].before ? 'Có ảnh trước, thiếu ảnh sau' : 'Có ảnh sau, thiếu ảnh trước')
   : 'Chưa kiểm tra';
-const dot = n => done(n) ? '#34c759' : started(n) ? '#ffb800' : 'transparent';
-const star = on => `<svg width="22" height="22" viewBox="0 0 24 24" fill="${on ? '#2b2b2b' : 'none'}" stroke="#2b2b2b" stroke-width="1.6" stroke-linejoin="round" style="opacity:${on ? 1 : .25}"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>`;
+const dot = n => done(n) ? '#34c759' : started(n) ? '#ff9f0a' : 'transparent';
+const star = on => `<svg width="22" height="22" viewBox="0 0 24 24" fill="${on ? '#ffd60a' : 'none'}" stroke="${on ? '#ffd60a' : '#8e8e93'}" stroke-width="1.6" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>`;
 
 function createRowElement(n) {
   const el = document.createElement('div');
@@ -141,11 +140,11 @@ function createRowElement(n) {
   const p = photos[n] || {}, img = p.after || p.before;
   el.innerHTML = `
     <div class="relative shrink-0">
-      <div class="w-[62px] h-[62px] rounded-full soft overflow-hidden flex items-center justify-center text-[20px] font-medium text-[#999]">${img ? `<img src="${img}" alt="" class="w-full h-full object-cover">` : pad(n)}</div>
-      <span class="absolute right-0 bottom-0 w-[14px] h-[14px] rounded-full border-2 border-white" style="background:${dot(n)}"></span>
+      <div class="w-[62px] h-[62px] rounded-full soft overflow-hidden flex items-center justify-center text-[20px] font-medium text-[#8e8e93] border border-white/5">${img ? `<img src="${img}" alt="" class="w-full h-full object-cover">` : pad(n)}</div>
+      <span class="absolute right-0 bottom-0 w-[14px] h-[14px] rounded-full border-2 border-[#18181a]" style="background:${dot(n)}"></span>
     </div>
     <div class="flex-1 min-w-0">
-      <div class="text-[18px] font-medium">Villa ${pad(n)}</div>
+      <div class="text-[18px] font-medium text-[#f2f2f7]">Villa ${pad(n)}</div>
       <div class="text-[14px] sub truncate">${sub(n)}</div>
     </div>
     <button data-star="${n}" aria-label="Điểm danh villa ${pad(n)}" class="tap p-2 -mr-1">${star(favs.has(n))}</button>`;
@@ -184,7 +183,13 @@ function render(){
     completedSection.classList.add('hidden');
   }
 
+  let emptyMsg = 'Không có villa nào khớp.';
+  if (tab === 'fav' && favs.size === 0 && !q) {
+    emptyMsg = 'Chưa chọn căn nào vào mục Điểm danh. Bấm sao ☆ ở tab Tất cả để thêm.';
+  }
+  $('#empty').textContent = emptyMsg;
   $('#empty').classList.toggle('hidden', (shownPending + shownCompleted) > 0);
+  
   const d = Array.from({length: TOTAL}, (_, i) => i + 1).filter(done).length;
   $('#doneNum').textContent = d; 
   $('#totalNum').textContent = TOTAL;
@@ -205,7 +210,7 @@ function renderSheet(){
   document.querySelectorAll('.slot').forEach(b => {
     const k = b.dataset.slot, url = p[k], label = k === 'before' ? 'Ảnh trước' : 'Ảnh sau';
     b.innerHTML = url
-      ? `<img src="${url}" alt="${label}" class="absolute inset-0 w-full h-full object-cover"><span class="absolute left-2 bottom-2 text-[12px] font-medium bg-white/90 text-[#2b2b2b] rounded-full px-2.5 py-1">${label} · Chụp lại</span>`
+      ? `<img src="${url}" alt="${label}" class="absolute inset-0 w-full h-full object-cover"><span class="absolute left-2 bottom-2 text-[12px] font-medium bg-black/80 text-white rounded-full px-2.5 py-1 backdrop-blur-xs">${label} · Chụp lại</span>`
       : `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span class="text-[14px] mt-2">${label}</span>`;
   });
 }
@@ -225,7 +230,7 @@ document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeSheets);
 
 function setTab(t){
   tab = t;
-  $('#segThumb').style.transform = t === 'all' ? 'translateX(0)' : 'translateX(100%)';
+  $('#segThumb').style.transform = t === 'fav' ? 'translateX(0)' : 'translateX(100%)';
   document.querySelectorAll('.seg').forEach(b => b.style.opacity = b.dataset.tab === t ? 1 : .5);
   render();
 }
@@ -253,12 +258,6 @@ $('#completedList').onclick = handleListClick;
 
 $('#vsStar').onclick = () => { toggleFav(cur); renderSheet() };
 document.querySelectorAll('.slot').forEach(b => b.onclick = () => { slot = b.dataset.slot; $('#cam').click() });
-
-$('#fab').onclick = () => {
-  let n = null;
-  for (let i = 1; i <= TOTAL; i++){ if (!done(i) && (tab !== 'fav' || favs.has(i))){ n = i; break } }
-  n ? openVilla(n) : toast('Đã hoàn thành tất cả');
-};
 
 function compressImage(file, maxWidth = 1280, quality = 0.7) {
   return new Promise((resolve, reject) => {
@@ -339,7 +338,7 @@ $('#gasSave').onclick = () => {
   toast('Đã lưu cài đặt');
 };
 
-setTab('all');
+setTab('fav');
 </script>
 </body>
 </html>
