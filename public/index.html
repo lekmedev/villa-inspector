@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#121212">
-<title>Villa Inspector</title>
+<title>Chụp hình dạo cùng Culi AN</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -39,8 +39,8 @@ input[type=search]::-webkit-search-cancel-button{display:none}
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7h16M7 12h13M10 17h10"/></svg>
       </button>
       <div class="text-center leading-tight">
-        <div class="text-[20px] font-medium text-[#f2f2f7]">Villa Inspector</div>
-        <div class="text-[12px] sub"><span id="doneNum">0</span> / <span id="totalNum">80</span> hoàn thành</div>
+        <div class="text-[17px] font-medium text-[#f2f2f7] truncate max-w-[220px]">Chụp hình dạo cùng Culi AN</div>
+        <div class="text-[12px] sub"><span id="doneNum">0</span> / <span id="totalNum">79</span> hoàn thành</div>
       </div>
       <button id="btnSearch" aria-label="Tìm kiếm" class="tap w-10 h-10 -mr-2 flex items-center justify-center text-[#8e8e93] hover:text-white justify-self-end">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -58,7 +58,7 @@ input[type=search]::-webkit-search-cancel-button{display:none}
   <div class="px-5 pt-4">
     <div class="relative flex p-[2px] rounded-full soft border border-white/5">
       <div id="segThumb" class="seg-t absolute top-[2px] bottom-[2px] left-[2px] w-[calc(50%-2px)] rounded-full bg-[#2c2c2e]" style="box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>
-      <button data-tab="fav" class="seg relative z-10 flex-1 py-1.5 text-[14px] font-medium text-white">Điểm danh <span id="favCount" class="sub">0</span></button>
+      <button data-tab="fav" class="seg relative z-10 flex-1 py-1.5 text-[14px] font-medium text-white">Nay làm... <span id="favCount" class="sub">0</span></button>
       <button data-tab="all" class="seg relative z-10 flex-1 py-1.5 text-[14px] font-medium text-white">Tất cả</button>
     </div>
   </div>
@@ -194,7 +194,7 @@ function render(){
 
   let emptyMsg = 'Không có villa nào khớp.';
   if (tab === 'fav' && favs.size === 0 && !q) {
-    emptyMsg = 'Chưa chọn căn nào vào mục Điểm danh. Bấm sao ☆ ở tab Tất cả để thêm.';
+    emptyMsg = 'Chưa chọn căn nào vào mục "Nay làm...". Bấm sao ☆ ở tab Tất cả để thêm.';
   }
   $('#empty').textContent = emptyMsg;
   $('#empty').classList.toggle('hidden', (shownPending + shownCompleted) > 0);
