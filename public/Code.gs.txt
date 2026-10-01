@@ -2,12 +2,51 @@ const PARENT_FOLDER_ID = "YOUR_PARENT_FOLDER_ID_HERE"; // Thay ID thu muc Google
 const SPREADSHEET_ID = "YOUR_SPREADSHEET_ID_HERE";     // Thay ID Google Sheet
 const SHEET_NAME = "Trang tính1";                      // Doi ten Sheet neu can
 
+// GET: Dong bo trang thai tat ca villa tu Google Sheet ve cho cac thiet bi
 function doGet(e) {
-  return ContentService.createTextOutput(
-    JSON.stringify({ status: "success", message: "Web App is online." })
-  ).setMimeType(ContentService.MimeType.JSON);
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
+    const rows = sheet.getDataRange().getValues();
+
+    const data = {};
+    // rows[0] la Header: [Mã Villa, Ảnh Trước (URL), Thời Gian Trước, Ảnh Sau (URL), Thời Gian Sau, Trạng Thái]
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const villaId = String(row[0]).trim();
+      if (!villaId) continue;
+
+      const numMatch = villaId.match(/\d+/);
+      const num = numMatch ? parseInt(numMatch[0], 10) : null;
+      if (!num) continue;
+
+      data[num] = {
+        before: row[1] ? String(row[1]) : null,
+        beforeTime: row[2] ? String(row[2]) : null,
+        after: row[3] ? String(row[3]) : null,
+        afterTime: row[4] ? String(row[4]) : null,
+        status: row[5] ? String(row[5]) : "Chưa hoàn thành"
+      };
+    }
+
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        status: "success",
+        total: Object.keys(data).length,
+        villas: data
+      })
+    ).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        status: "error",
+        message: err.message
+      })
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
+// POST: Nhan anh moi, upload Drive va ghi de vao Google Sheet
 function doPost(e) {
   const lock = LockService.getScriptLock();
   try {

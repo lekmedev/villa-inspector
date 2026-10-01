@@ -41,7 +41,13 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 
 <main class="max-w-xl mx-auto px-5 pb-16" style="padding-top:calc(env(safe-area-inset-top,0px) + 12px)">
   <div class="flex items-center justify-between h-10">
-    <span class="text-[15px] sub">Chụp hình dạo</span>
+    <div class="flex items-center gap-2">
+      <span class="text-[15px] sub">Chụp hình dạo</span>
+      <button id="btnSync" title="Đồng bộ từ Google Sheet" class="tap text-[12px] px-2 py-0.5 rounded-full fill text-slate-400 hover:text-white flex items-center gap-1">
+        <span id="syncIcon" class="inline-block">🔄</span>
+        <span id="syncStatus" class="hidden sm:inline">Sync</span>
+      </button>
+    </div>
     <div class="flex items-center gap-2">
       <!-- Dark/Light Mode Toggle -->
       <button id="btnTheme" aria-label="Đổi giao diện" class="tap w-8 h-8 rounded-full fill flex items-center justify-center text-white dark:text-white light:text-black">
@@ -58,7 +64,7 @@ input[type=search]::-webkit-search-cancel-button{display:none}
   <section class="mb-6">
     <div class="flex items-baseline justify-between mb-2">
       <span class="text-[15px] sub">Tiến độ hôm nay</span>
-      <span class="text-[15px] font-semibold"><span id="doneNum">0</span> / <span id="totalNum">80</span></span>
+      <span class="text-[15px] font-semibold"><span id="doneNum">0</span> / <span id="totalNum">79</span></span>
     </div>
     <div class="bar h-1 rounded-full fill overflow-hidden"><i class="block h-full bg-white dark:bg-white light:bg-black rounded-full" style="width:0"></i></div>
   </section>
@@ -111,17 +117,17 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 <div id="setSheet" class="sheet fixed inset-x-0 bottom-0 z-[55] translate-y-full rounded-t-[24px] bg-[#1c1c1e] text-white dark:bg-[#1c1c1e] dark:text-white light:bg-white light:text-black max-w-xl mx-auto" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + 12px);box-shadow:0 -8px 40px rgba(0,0,0,.4)">
   <div class="w-9 h-1 rounded-full bg-white/20 light:bg-black/15 mx-auto mt-2.5 mb-4"></div>
   <div class="px-5 pb-3"><div class="text-[20px] font-semibold">Kết nối Google Sheets</div>
-  <div class="text-[13px] sub mt-0.5">Dán địa chỉ Web App (doPost) của Apps Script để gửi ảnh lên.</div></div>
+  <div class="text-[13px] sub mt-0.5">Dán địa chỉ Web App (doPost / doGet) của Apps Script để gửi và đồng bộ ảnh chung.</div></div>
   <div class="px-5"><input id="gasUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" class="w-full h-11 px-4 rounded-[12px] fill text-[15px] outline-none text-white dark:text-white light:text-black"></div>
   <div class="px-5 mt-4 grid grid-cols-2 gap-2">
     <button data-close class="tap h-12 rounded-[14px] fill text-[17px] font-semibold">Đóng</button>
-    <button id="gasSave" class="tap h-12 rounded-[14px] bg-white text-black dark:bg-white dark:text-black light:bg-black light:text-white text-[17px] font-semibold">Lưu</button>
+    <button id="gasSave" class="tap h-12 rounded-[14px] bg-white text-black dark:bg-white dark:text-black light:bg-black light:text-white text-[17px] font-semibold">Lưu & Đồng bộ</button>
   </div>
 </div>
 
 <script>
 const TOTAL = 80;
-// Bỏ qua villa 13 theo phong tục / quy hoạch (1..80 trừ 13)
+// Bỏ qua villa 13 (1..80 trừ 13)
 const VILLAS_LIST = Array.from({length: TOTAL}, (_, i) => i + 1).filter(n => n !== 13);
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -185,7 +191,7 @@ function btn(n, kind, url){
   const checkStroke = isDark ? '#fff' : '#000';
   
   if (url) return `<button data-view="${n}:${kind}" aria-label="Xem ảnh ${label.toLowerCase()}" class="tap h-12 rounded-[12px] fill flex items-center gap-2.5 pl-1.5 pr-3 text-left">
-    <img src="${url}" alt="" class="w-9 h-9 rounded-[8px] object-cover">
+    <img src="${url}" alt="" class="w-9 h-9 rounded-[8px] object-cover bg-black/10">
     <span class="flex-1 text-[15px] font-medium">${label}</span>
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${checkStroke}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></button>`;
   return `<button data-snap="${n}:${kind}" class="tap h-12 rounded-[12px] border border-white/20 light:border-black/15 flex items-center justify-center gap-2 text-[15px] font-medium">
@@ -264,7 +270,7 @@ let tt;
 function toast(msg){
   $('#toastText').textContent = msg;
   const t = $('#toast'); t.classList.remove('-translate-y-24','opacity-0');
-  clearTimeout(tt); tt = setTimeout(() => t.classList.add('-translate-y-24','opacity-0'), 2200);
+  clearTimeout(tt); tt = setTimeout(() => t.classList.add('-translate-y-24','opacity-0'), 2500);
 }
 
 const openSheet = id => { $('#scrim').classList.remove('opacity-0','pointer-events-none'); $(id).classList.remove('translate-y-full') };
@@ -339,6 +345,7 @@ function compressImage(file, maxWidth = 1280, quality = 0.7) {
   });
 }
 
+// Chụp ảnh -> Tự động nén -> Lưu máy -> Gửi Drive/Sheet không cần bấm duyệt
 $('#cam').onchange = async e => {
   const f = e.target.files[0]; e.target.value = '';
   if (!f || !target) return;
@@ -367,6 +374,11 @@ $('#cam').onchange = async e => {
       const result = await res.json();
       if (result.status === 'success') {
         toast(`Villa ${pad(n)}: đã lưu và tải lên Drive ✓`);
+        if (result.fileUrl) {
+          photos[n][k] = result.fileUrl; // Cập nhật bằng Drive URL
+          store.set('vi:photos', photos);
+          render();
+        }
       } else {
         toast(`Lỗi Drive: ${result.message || 'Thất bại'}`);
       }
@@ -379,12 +391,56 @@ $('#cam').onchange = async e => {
   }
 };
 
+// Hàm đồng bộ dữ liệu từ Google Sheet về máy
+async function syncFromGoogleSheet(silent = false) {
+  const gas = store.get('vi:gas', '');
+  if (!gas) {
+    if (!silent) toast('Chưa cấu hình link Google Apps Script');
+    return;
+  }
+
+  const syncIcon = $('#syncIcon');
+  if (syncIcon) syncIcon.classList.add('animate-spin');
+
+  try {
+    const res = await fetch(gas);
+    const result = await res.json();
+    if (result.status === 'success' && result.villas) {
+      let count = 0;
+      for (const [numStr, data] of Object.entries(result.villas)) {
+        const n = parseInt(numStr, 10);
+        if (!n) continue;
+        photos[n] = photos[n] || {};
+        if (data.before) photos[n].before = data.before;
+        if (data.after) photos[n].after = data.after;
+        if (data.before || data.after) count++;
+      }
+      store.set('vi:photos', photos);
+      render();
+      if (!silent) toast(`Đã đồng bộ ${count} căn từ Google Sheets ✓`);
+    }
+  } catch(err) {
+    console.error(err);
+    if (!silent) toast('Không thể đồng bộ dữ liệu từ Sheets');
+  } finally {
+    if (syncIcon) syncIcon.classList.remove('animate-spin');
+  }
+}
+
+$('#btnSync').onclick = () => syncFromGoogleSheet(false);
 $('#btnSettings').onclick = () => { $('#gasUrl').value = store.get('vi:gas', ''); openSheet('#setSheet') };
-$('#gasSave').onclick = () => { store.set('vi:gas', $('#gasUrl').value.trim()); closeSheets(); toast('Đã lưu cài đặt') };
+$('#gasSave').onclick = () => { 
+  store.set('vi:gas', $('#gasUrl').value.trim()); 
+  closeSheets(); 
+  toast('Đã lưu cài đặt!');
+  syncFromGoogleSheet(false);
+};
 
 // Khởi chạy
 applyTheme(currentTheme);
 setTab('fav'); // Focus vào "Nay làm..." khi mở web
+render();
+syncFromGoogleSheet(true); // Tự động kéo dữ liệu mới nhất từ Sheet khi mở web
 </script>
 </body>
 </html>
