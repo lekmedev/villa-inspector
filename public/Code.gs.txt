@@ -1,6 +1,6 @@
-const PARENT_FOLDER_ID = "1krBytez3bNzfFe-NQA6MdJxTPBMKYN5Q"; // Thay ID thu muc Google Drive
-const SPREADSHEET_ID = "1ZXbqdF3yxuXBZjNgW4x7O7nl7AhgekYkZExcg5pz8IE";     // Thay ID Google Sheet
-const SHEET_NAME = "Database";                      // Doi ten Sheet neu can
+const PARENT_FOLDER_ID = "1krBytez3bNzfFe-NQA6MdJxTPBMKYN5Q"; // ID thu muc Google Drive
+const SPREADSHEET_ID = "1ZXbqdF3yxuXBZjNgW4x7O7nl7AhgekYkZExcg5pz8IE";     // ID Google Sheet
+const SHEET_NAME = "Database";                      // Ten Sheet
 
 // GET: Dong bo trang thai tat ca villa tu Google Sheet ve cho cac thiet bi
 function doGet(e) {
@@ -10,7 +10,6 @@ function doGet(e) {
     const rows = sheet.getDataRange().getValues();
 
     const data = {};
-    // rows[0] la Header: [Mã Villa, Ảnh Trước (URL), Thời Gian Trước, Ảnh Sau (URL), Thời Gian Sau, Trạng Thái]
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       const villaId = String(row[0]).trim();
@@ -53,8 +52,8 @@ function doPost(e) {
     lock.waitLock(30000);
 
     const data = JSON.parse(e.postData.contents);
-    const villaId = String(data.villaId || "").trim(); // "Villa 01" hoac "Villa 1" hoac "1"
-    const type = String(data.type || "").toLowerCase().trim(); // "before" | "after"
+    const villaId = String(data.villaId || "").trim();
+    const type = String(data.type || "").toLowerCase().trim();
     const rawImage = data.image;
     const mimeType = data.mimeType || "image/jpeg";
 
@@ -62,48 +61,65 @@ function doPost(e) {
       throw new Error("Missing required fields: villaId, type, image");
     }
 
-    // Lay so thu tu Villa (vd: "Villa 01" -> "Villa 1")
     const numMatch = villaId.match(/\d+/);
     const villaNum = numMatch ? parseInt(numMatch[0], 10) : villaId;
     const typeLabel = type === "before" ? "Before" : "After";
+    const fileName = `Villa ${villaNum} ${typeLabel}.jpg`;
 
-    // 1. Luu tat ca anh vao cung 1 thu muc me PARENT_FOLDER_ID (khong chia thu muc con)
-    let targetFolder;
-    if (PARENT_FOLDER_ID && PARENT_FOLDER_ID !== "YOUR_PARENT_FOLDER_ID_HERE") {
-      targetFolder = DriveApp.getFolderById(PARENT_FOLDER_ID);
-    } else {
-      targetFolder = DriveApp.getRootFolder();
-    }
-
-    // 2. Decode Base64 & Tao file anh voi ten format: "Villa X Before.jpg" hoac "Villa X After.jpg"
+    // 1. Decode Base64 & Upload bang Drive Advanced API (ho tro Google Workspace & bypass DriveApp restriction)
     const base64Data = rawImage.replace(/^data:image\/\w+;base64,/, "");
     const decodedBlob = Utilities.newBlob(
       Utilities.base64Decode(base64Data),
-      mimeType
+      mimeType,
+      fileName
     );
 
-    const fileName = `Villa ${villaNum} ${typeLabel}.jpg`;
+    let fileUrl = "";
+    let fileId = "";
 
-    // Neu da co file cu cung ten trong folder thi xoa hoac ghi de de khong bi trung
-    const existingFiles = targetFolder.getFilesByName(fileName);
-    while (existingFiles.hasNext()) {
-      const oldFile = existingFiles.next();
-      oldFile.setTrashed(true);
+    // Thu dung Drive Advanced Service (v2/v3) da duoc Add Service
+    if (typeof Drive !== 'undefined') {
+      // Xoa file cu cung ten neu co trong folder
+      try {
+        const query = `title = '${fileName}' and '${PARENT_FOLDER_ID}' in parents and trashed = false`;
+        const existing = Drive.Files.list({ q: query });
+        if (existing && existing.items) {
+          for (let i = 0; i < existing.items.length; i++) {
+            Drive.Files.remove(existing.items[i].id);
+          }
+        }
+      } catch (ex) {}
+
+      // Tao file moi
+      const resource = {
+        title: fileName,
+        mimeType: mimeType,
+        parents: [{ id: PARENT_FOLDER_ID }]
+      };
+      const newFile = Drive.Files.insert(resource, decodedBlob);
+      fileId = newFile.id;
+      fileUrl = newFile.alternateLink || `https://drive.google.com/file/d/${fileId}/view`;
+
+      // Set public permission
+      try {
+        Drive.Permissions.insert({ role: 'reader', type: 'anyone' }, fileId);
+      } catch(ex) {}
+    } else {
+      // Fallback dung DriveApp truyen thong
+      const targetFolder = DriveApp.getFolderById(PARENT_FOLDER_ID);
+      const existingFiles = targetFolder.getFilesByName(fileName);
+      while (existingFiles.hasNext()) {
+        existingFiles.next().setTrashed(true);
+      }
+      const createdFile = targetFolder.createFile(decodedBlob);
+      createdFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      fileUrl = createdFile.getUrl();
     }
 
-    decodedBlob.setName(fileName);
-    const createdFile = targetFolder.createFile(decodedBlob);
-    createdFile.setSharing(
-      DriveApp.Access.ANYONE_WITH_LINK,
-      DriveApp.Permission.VIEW
-    );
-    const fileUrl = createdFile.getUrl();
-
-    // 3. Ghi log & Cap nhat vao Google Sheet
+    // 2. Ghi log & Cap nhat vao Google Sheet
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
 
-    // Tao Header neu trang tinh con moi
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
         "Mã Villa",
@@ -138,7 +154,6 @@ function doPost(e) {
     }
 
     if (targetRowIndex === -1) {
-      // Them dong moi neu chua co
       const newRow = [
         standardVillaId,
         type === "before" ? fileUrl : "",
@@ -150,7 +165,6 @@ function doPost(e) {
       sheet.appendRow(newRow);
       targetRowIndex = sheet.getLastRow();
     } else {
-      // Cap nhat URL anh va thoi gian
       if (type === "before") {
         sheet.getRange(targetRowIndex, 2).setValue(fileUrl);
         sheet.getRange(targetRowIndex, 3).setValue(timeDisplay);
@@ -160,7 +174,6 @@ function doPost(e) {
       }
     }
 
-    // Danh gia trang thai hoan thanh
     const beforeUrlVal = sheet.getRange(targetRowIndex, 2).getValue();
     const afterUrlVal = sheet.getRange(targetRowIndex, 4).getValue();
     const isCompleted = Boolean(beforeUrlVal && afterUrlVal);
