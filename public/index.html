@@ -50,9 +50,7 @@ input[type=search]::-webkit-search-cancel-button{display:none}
   <!-- Header -->
   <header class="sticky top-0 z-30 bg-[#18181a] sm:rounded-t-2xl border-b border-white/5" style="padding-top:env(safe-area-inset-top,0px)">
     <div class="h-16 px-5 grid grid-cols-[40px_1fr_40px] items-center">
-      <button id="btnMenu" aria-label="Cài đặt" class="tap w-10 h-10 -ml-2 flex items-center justify-center text-[#8e8e93] hover:text-white">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7h16M7 12h13M10 17h10"/></svg>
-      </button>
+      <div class="w-10 h-10 -ml-2"></div>
       <div class="text-center leading-tight">
         <div class="text-[17px] font-medium text-[#f2f2f7] truncate max-w-[220px]">Chụp hình dạo cùng Culi AN</div>
         <div class="text-[12px] sub"><span id="doneNum">0</span> / <span id="totalNum">79</span> hoàn thành</div>
@@ -114,18 +112,6 @@ input[type=search]::-webkit-search-cancel-button{display:none}
   <div class="px-6 mt-4"><button data-close class="tap w-full h-12 rounded-full bg-[#2c2c2e] text-[16px] font-medium text-white hover:bg-[#3a3a3c]">Xong</button></div>
 </div>
 
-<!-- Settings sheet -->
-<div id="setSheet" class="sheet fixed inset-x-0 bottom-0 z-[55] translate-y-full rounded-t-3xl bg-[#1c1c1e] text-white max-w-md mx-auto border-t border-white/10" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px);box-shadow:0 -8px 40px rgba(0,0,0,.5)">
-  <div class="w-9 h-1 rounded-full bg-white/20 mx-auto mt-2.5 mb-4"></div>
-  <div class="px-6 pb-3"><div class="text-[22px] font-medium text-white">Kết nối Google Sheets</div>
-  <div class="text-[13px] sub mt-0.5">Dán địa chỉ Web App (doPost) của Apps Script để gửi ảnh lên.</div></div>
-  <div class="px-6"><input id="gasUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" class="w-full h-11 px-4 rounded-full bg-[#2c2c2e] text-white text-[15px] outline-none border border-white/5"></div>
-  <div class="px-6 mt-4 grid grid-cols-2 gap-2">
-    <button data-close class="tap h-12 rounded-full bg-[#2c2c2e] text-white text-[16px] font-medium">Đóng</button>
-    <button id="gasSave" class="tap h-12 rounded-full bg-white text-black text-[16px] font-semibold">Lưu</button>
-  </div>
-</div>
-
 <script>
 // CẤU HÌNH MẶC ĐỊNH
 const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzSHV9lCQxvSNii1_5g3q_S0bvsWV7Z4TXMPLqgS2JJtKWxxY6cegy5MSaylHuoDStQqw/exec"; 
@@ -141,7 +127,7 @@ const store = {
 };
 
 function getGasEndpoint() {
-  return store.get('vi:gas', '') || DEFAULT_GAS_URL;
+  return DEFAULT_GAS_URL;
 }
 let favs = new Set(store.get('vi:favs', []));
 let photos = store.get('vi:photos', {});
@@ -406,13 +392,6 @@ $('#cam').onchange = async e => {
   }
 };
 
-$('#btnMenu').onclick = () => { $('#gasUrl').value = store.get('vi:gas', ''); openSheet('#setSheet') };
-$('#gasSave').onclick = () => { 
-  store.set('vi:gas', $('#gasUrl').value.trim()); 
-  closeSheets(); 
-  toast('Đã lưu cài đặt');
-};
-
 // Tự động đồng bộ dữ liệu 2 chiều từ Google Sheet / Apps Script về thiết bị
 async function syncFromCloud() {
   const gas = getGasEndpoint();
@@ -448,6 +427,7 @@ async function syncFromCloud() {
 
 setTab('fav');
 syncFromCloud();
+
 
 </script>
 </body>
