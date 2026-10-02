@@ -1,4 +1,4 @@
-const PARENT_FOLDER_ID = "YOUR_PARENT_FOLDER_ID_HERE"; // Thay ID thu muc Google Drive
+const PARENT_FOLDER_ID = "YOUR_PARENT_FOLDER_ID_HERE"; // Thay ID thu muc Google Drive (hoac de trong de luu vao thu muc goc cua Drive)
 const SPREADSHEET_ID = "YOUR_SPREADSHEET_ID_HERE";     // Thay ID Google Sheet
 const SHEET_NAME = "Trang tính1";                      // Doi ten Sheet neu can
 
@@ -53,8 +53,8 @@ function doPost(e) {
     lock.waitLock(30000);
 
     const data = JSON.parse(e.postData.contents);
-    const villaId = String(data.villaId).trim();
-    const type = String(data.type).toLowerCase().trim(); // "before" | "after"
+    const villaId = String(data.villaId || "").trim(); // "Villa 01" hoac "Villa 1" hoac "1"
+    const type = String(data.type || "").toLowerCase().trim(); // "before" | "after"
     const rawImage = data.image;
     const mimeType = data.mimeType || "image/jpeg";
 
@@ -62,35 +62,37 @@ function doPost(e) {
       throw new Error("Missing required fields: villaId, type, image");
     }
 
-    // 1. Quan ly thu muc theo tung Villa tren Google Drive
-    const parentFolder = DriveApp.getFolderById(PARENT_FOLDER_ID);
-    const subFolderIter = parentFolder.getFoldersByName(`Villa_${villaId}`);
-    const villaFolder = subFolderIter.hasNext()
-      ? subFolderIter.next()
-      : parentFolder.createFolder(`Villa_${villaId}`);
+    // Lay so thu tu Villa (vd: "Villa 01" -> "Villa 1")
+    const numMatch = villaId.match(/\d+/);
+    const villaNum = numMatch ? parseInt(numMatch[0], 10) : villaId;
+    const typeLabel = type === "before" ? "Before" : "After";
 
-    // 2. Decode Base64 & Tao file anh
+    // 1. Luu tat ca anh vao cung 1 thu muc me PARENT_FOLDER_ID (khong chia thu muc con)
+    let targetFolder;
+    if (PARENT_FOLDER_ID && PARENT_FOLDER_ID !== "YOUR_PARENT_FOLDER_ID_HERE") {
+      targetFolder = DriveApp.getFolderById(PARENT_FOLDER_ID);
+    } else {
+      targetFolder = DriveApp.getRootFolder();
+    }
+
+    // 2. Decode Base64 & Tao file anh voi ten format: "Villa X Before.jpg" hoac "Villa X After.jpg"
     const base64Data = rawImage.replace(/^data:image\/\w+;base64,/, "");
     const decodedBlob = Utilities.newBlob(
       Utilities.base64Decode(base64Data),
       mimeType
     );
 
-    const now = new Date();
-    const timestampStr = Utilities.formatDate(
-      now,
-      Session.getScriptTimeZone() || "GMT+7",
-      "yyyy-MM-dd_HHmmss"
-    );
-    const timeDisplay = Utilities.formatDate(
-      now,
-      Session.getScriptTimeZone() || "GMT+7",
-      "yyyy-MM-dd HH:mm:ss"
-    );
-    const fileName = `Villa_${villaId}_${type}_${timestampStr}.jpg`;
+    const fileName = `Villa ${villaNum} ${typeLabel}.jpg`;
+
+    // Neu da co file cu cung ten trong folder thi xoa hoac ghi de de khong bi trung
+    const existingFiles = targetFolder.getFilesByName(fileName);
+    while (existingFiles.hasNext()) {
+      const oldFile = existingFiles.next();
+      oldFile.setTrashed(true);
+    }
 
     decodedBlob.setName(fileName);
-    const createdFile = villaFolder.createFile(decodedBlob);
+    const createdFile = targetFolder.createFile(decodedBlob);
     createdFile.setSharing(
       DriveApp.Access.ANYONE_WITH_LINK,
       DriveApp.Permission.VIEW
@@ -114,11 +116,22 @@ function doPost(e) {
       sheet.getRange(1, 1, 1, 6).setFontWeight("bold").setBackground("#f3f4f6");
     }
 
+    const standardVillaId = `Villa ${String(villaNum).padStart(2, '0')}`;
+    const now = new Date();
+    const timeDisplay = Utilities.formatDate(
+      now,
+      Session.getScriptTimeZone() || "GMT+7",
+      "yyyy-MM-dd HH:mm:ss"
+    );
+
     const rows = sheet.getDataRange().getValues();
     let targetRowIndex = -1;
 
     for (let i = 1; i < rows.length; i++) {
-      if (String(rows[i][0]).trim() === villaId) {
+      const cellVal = String(rows[i][0]).trim();
+      const rowNumMatch = cellVal.match(/\d+/);
+      const rowNum = rowNumMatch ? parseInt(rowNumMatch[0], 10) : null;
+      if (cellVal === standardVillaId || (rowNum !== null && rowNum === villaNum)) {
         targetRowIndex = i + 1;
         break;
       }
@@ -127,7 +140,7 @@ function doPost(e) {
     if (targetRowIndex === -1) {
       // Them dong moi neu chua co
       const newRow = [
-        villaId,
+        standardVillaId,
         type === "before" ? fileUrl : "",
         type === "before" ? timeDisplay : "",
         type === "after" ? fileUrl : "",
@@ -158,7 +171,8 @@ function doPost(e) {
       JSON.stringify({
         status: "success",
         fileUrl: fileUrl,
-        villaId: villaId,
+        fileName: fileName,
+        villaId: standardVillaId,
         type: type,
         isCompleted: isCompleted
       })

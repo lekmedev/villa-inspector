@@ -30,6 +30,21 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 
 <div id="toast" class="pill fixed left-1/2 z-[60] -translate-x-1/2 -translate-y-24 opacity-0 bg-white text-black text-[14px] font-medium rounded-full px-5 py-2.5 shadow-2xl" style="top:calc(env(safe-area-inset-top,0px) + 10px)"><span id="toastText"></span></div>
 
+<!-- Floating Upload Progress (Chạy ngầm & hiện % tiến trình) -->
+<div id="uploadProgressBox" class="fixed right-4 bottom-5 z-[70] hidden items-center gap-3 bg-[#1c1c1e]/95 backdrop-blur-md border border-white/10 text-white px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.6)] max-w-[280px]">
+  <div class="relative w-8 h-8 shrink-0 flex items-center justify-center">
+    <svg class="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
+      <path class="text-white/10" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+      <path id="uploadProgressCircle" class="text-blue-500 transition-all duration-150" stroke-dasharray="0, 100" stroke-linecap="round" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+    </svg>
+    <span id="uploadProgressPct" class="absolute text-[10px] font-bold">0%</span>
+  </div>
+  <div class="min-w-0 flex-1">
+    <div id="uploadProgressTitle" class="text-[13px] font-medium truncate text-[#f2f2f7]">Đang tải lên Drive...</div>
+    <div id="uploadProgressSub" class="text-[11px] sub truncate">Chạy ngầm</div>
+  </div>
+</div>
+
 <div class="relative max-w-md mx-auto min-h-full bg-[#18181a] sm:my-6 sm:rounded-2xl sm:min-h-[calc(100%-3rem)] sm:shadow-[0_10px_40px_rgba(0,0,0,.5)] border border-white/5">
 
   <!-- Header -->
@@ -280,12 +295,88 @@ function readFileAsBase64(file) {
   });
 }
 
+// Xử lý upload ngầm hiển thị % tiến trình bằng XMLHttpRequest
+function uploadPhotoBackground(n, k, file, b64) {
+  const gas = getGasEndpoint();
+  if (!gas) return;
+
+  const box = $('#uploadProgressBox');
+  const circle = $('#uploadProgressCircle');
+  const pctText = $('#uploadProgressPct');
+  const title = $('#uploadProgressTitle');
+  const subText = $('#uploadProgressSub');
+
+  box.classList.remove('hidden');
+  box.classList.add('flex');
+  circle.setAttribute('stroke-dasharray', `0, 100`);
+  pctText.textContent = '0%';
+  title.textContent = `Villa ${pad(n)} (${k === 'before' ? 'Before' : 'After'})`;
+  subText.textContent = `0% · Đang gửi ngầm...`;
+
+  const payload = JSON.stringify({
+    villaId: `Villa ${pad(n)}`,
+    type: k,
+    image: b64,
+    mimeType: file.type || 'image/jpeg'
+  });
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', gas, true);
+  xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+
+  xhr.upload.onprogress = (evt) => {
+    if (evt.lengthComputable) {
+      const percent = Math.min(Math.round((evt.loaded / evt.total) * 100), 99);
+      circle.setAttribute('stroke-dasharray', `${percent}, 100`);
+      pctText.textContent = `${percent}%`;
+      subText.textContent = `${percent}% · Đang tải lên...`;
+    }
+  };
+
+  xhr.onload = () => {
+    circle.setAttribute('stroke-dasharray', `100, 100`);
+    pctText.textContent = `100%`;
+    try {
+      const result = JSON.parse(xhr.responseText);
+      if (result.status === 'success') {
+        subText.textContent = `Hoàn tất lưu Drive ✓`;
+        toast(`Villa ${pad(n)}: đã lưu ảnh lên Drive ✓`);
+        if (result.fileUrl) {
+          photos[n] = photos[n] || {};
+          photos[n][k] = result.fileUrl;
+          store.set('vi:photos', photos);
+          renderSheet();
+          render();
+        }
+      } else {
+        subText.textContent = `Lỗi Drive: ${result.message || 'Thất bại'}`;
+        toast(`Lỗi Drive: ${result.message || 'Thất bại'}`);
+      }
+    } catch (e) {
+      subText.textContent = `Đã gửi dữ liệu ✓`;
+    }
+    setTimeout(() => {
+      box.classList.add('hidden');
+      box.classList.remove('flex');
+    }, 2500);
+  };
+
+  xhr.onerror = () => {
+    subText.textContent = `Lỗi kết nối khi gửi ảnh`;
+    setTimeout(() => {
+      box.classList.add('hidden');
+      box.classList.remove('flex');
+    }, 3000);
+  };
+
+  xhr.send(payload);
+}
+
 $('#cam').onchange = async e => {
   const f = e.target.files[0]; e.target.value = '';
   if (!f || !cur || !slot) return;
   const n = cur, k = slot;
   
-  toast(`Villa ${pad(n)}: đang gửi ảnh gốc ${k === 'before' ? 'trước' : 'sau'}...`);
   try {
     const b64 = await readFileAsBase64(f);
     photos[n] = photos[n] || {};
@@ -294,34 +385,11 @@ $('#cam').onchange = async e => {
     renderSheet();
     render();
 
-    const gas = getGasEndpoint();
-    if (gas){
-      const res = await fetch(gas, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          villaId: `Villa ${pad(n)}`,
-          type: k,
-          image: b64,
-          mimeType: f.type || 'image/jpeg'
-        })
-      });
-      const result = await res.json();
-      if (result.status === 'success') {
-        toast(`Villa ${pad(n)}: đã lưu ảnh gốc lên Drive ✓`);
-        if (result.fileUrl) {
-          photos[n][k] = result.fileUrl;
-          store.set('vi:photos', photos);
-          renderSheet();
-          render();
-        }
-      } else {
-        toast(`Lỗi Drive: ${result.message || 'Thất bại'}`);
-      }
-    }
+    // Gửi ngầm lên Drive và hiển thị thanh % tiến trình
+    uploadPhotoBackground(n, k, f, b64);
   } catch(err){
     console.error(err);
-    toast(`Villa ${pad(n)}: đã lưu ảnh`);
+    toast(`Villa ${pad(n)}: lỗi đọc ảnh`);
   }
 };
 
