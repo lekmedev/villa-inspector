@@ -157,11 +157,22 @@ const sub = n => done(n) ? 'Đã chụp đủ ảnh trước và sau'
 const dot = n => done(n) ? '#34c759' : started(n) ? '#ff9f0a' : 'transparent';
 const star = on => `<svg width="22" height="22" viewBox="0 0 24 24" fill="${on ? '#ffd60a' : 'none'}" stroke="${on ? '#ffd60a' : '#8e8e93'}" stroke-width="1.6" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>`;
 
+// Chuyển đổi link Google Drive sang link xem ảnh trực tiếp (direct thumbnail)
+function formatImageUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url;
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
+  }
+  return url;
+}
+
 function createRowElement(n) {
   const el = document.createElement('div');
   el.className = 'row flex items-center gap-4 px-3 h-24 rounded-2xl cursor-pointer';
   el.dataset.open = n;
-  const p = photos[n] || {}, img = p.after || p.before;
+  const p = photos[n] || {}, rawImg = p.after || p.before, img = formatImageUrl(rawImg);
   el.innerHTML = `
     <div class="relative shrink-0">
       <div class="w-[62px] h-[62px] rounded-full soft overflow-hidden flex items-center justify-center text-[20px] font-medium text-[#8e8e93] border border-white/5">${img ? `<img src="${img}" alt="" class="w-full h-full object-cover">` : pad(n)}</div>
@@ -234,7 +245,7 @@ function renderSheet(){
   $('#vsSub').textContent = sub(cur);
   $('#vsStar').innerHTML = star(favs.has(cur));
   document.querySelectorAll('.slot').forEach(b => {
-    const k = b.dataset.slot, url = p[k], label = k === 'before' ? 'Ảnh trước' : 'Ảnh sau';
+    const k = b.dataset.slot, rawUrl = p[k], url = formatImageUrl(rawUrl), label = k === 'before' ? 'Ảnh trước' : 'Ảnh sau';
     b.innerHTML = url
       ? `<img src="${url}" alt="${label}" class="absolute inset-0 w-full h-full object-cover"><span class="absolute left-2 bottom-2 text-[12px] font-medium bg-black/80 text-white rounded-full px-2.5 py-1 backdrop-blur-xs">${label} · Chụp lại</span>`
       : `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span class="text-[14px] mt-2">${label}</span>`;
@@ -402,7 +413,42 @@ $('#gasSave').onclick = () => {
   toast('Đã lưu cài đặt');
 };
 
+// Tự động đồng bộ dữ liệu 2 chiều từ Google Sheet / Apps Script về thiết bị
+async function syncFromCloud() {
+  const gas = getGasEndpoint();
+  if (!gas) return;
+  try {
+    const res = await fetch(gas);
+    const data = await res.json();
+    if (data.status === 'success' && data.villas) {
+      let changed = false;
+      for (const [vId, info] of Object.entries(data.villas)) {
+        const n = parseInt(vId, 10);
+        if (!n) continue;
+        photos[n] = photos[n] || {};
+        if (info.before && photos[n].before !== info.before) {
+          photos[n].before = info.before;
+          changed = true;
+        }
+        if (info.after && photos[n].after !== info.after) {
+          photos[n].after = info.after;
+          changed = true;
+        }
+      }
+      if (changed) {
+        store.set('vi:photos', photos);
+        render();
+        if (cur) renderSheet();
+      }
+    }
+  } catch (err) {
+    console.error('Sync cloud error:', err);
+  }
+}
+
 setTab('fav');
+syncFromCloud();
+
 </script>
 </body>
 </html>
