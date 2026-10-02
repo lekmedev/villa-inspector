@@ -2,9 +2,15 @@ const PARENT_FOLDER_ID = "1krBytez3bNzfFe-NQA6MdJxTPBMKYN5Q"; // ID thu muc Goog
 const SPREADSHEET_ID = "1ZXbqdF3yxuXBZjNgW4x7O7nl7AhgekYkZExcg5pz8IE";     // ID Google Sheet
 const SHEET_NAME = "Database";                      // Ten Sheet
 
-// GET: Dong bo trang thai tat ca villa tu Google Sheet ve cho cac thiet bi
+// GET: Dong bo trang thai tat ca villa tu Cache/Google Sheet ve cho cac thiet bi
 function doGet(e) {
   try {
+    const cache = CacheService.getScriptCache();
+    const cachedData = cache.get("villa_db_cache");
+    if (cachedData) {
+      return ContentService.createTextOutput(cachedData).setMimeType(ContentService.MimeType.JSON);
+    }
+
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
     const rows = sheet.getDataRange().getValues();
@@ -28,13 +34,18 @@ function doGet(e) {
       };
     }
 
-    return ContentService.createTextOutput(
-      JSON.stringify({
-        status: "success",
-        total: Object.keys(data).length,
-        villas: data
-      })
-    ).setMimeType(ContentService.MimeType.JSON);
+    const resultStr = JSON.stringify({
+      status: "success",
+      total: Object.keys(data).length,
+      villas: data
+    });
+
+    // Luu cache 120 giay de client khac load cuc nhanh
+    try {
+      cache.put("villa_db_cache", resultStr, 120);
+    } catch(cErr) {}
+
+    return ContentService.createTextOutput(resultStr).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(
       JSON.stringify({
@@ -78,9 +89,7 @@ function doPost(e) {
     let fileId = "";
 
     if (typeof Drive !== 'undefined' && Drive.Files) {
-      // Ho tro ca Drive API v3 (Drive.Files.create) va Drive API v2 (Drive.Files.insert)
       if (typeof Drive.Files.create === 'function') {
-        // Drive API v3
         try {
           const query = `name = '${fileName}' and '${PARENT_FOLDER_ID}' in parents and trashed = false`;
           const existing = Drive.Files.list({ q: query, fields: 'files(id, name)' });
@@ -104,7 +113,6 @@ function doPost(e) {
         } catch (ex) {}
 
       } else if (typeof Drive.Files.insert === 'function') {
-        // Drive API v2
         try {
           const query = `title = '${fileName}' and '${PARENT_FOLDER_ID}' in parents and trashed = false`;
           const existing = Drive.Files.list({ q: query });
@@ -129,7 +137,6 @@ function doPost(e) {
         } catch (ex) {}
       }
     } else {
-      // Fallback dung DriveApp
       const targetFolder = DriveApp.getFolderById(PARENT_FOLDER_ID);
       const existingFiles = targetFolder.getFilesByName(fileName);
       while (existingFiles.hasNext()) {
@@ -203,6 +210,11 @@ function doPost(e) {
     const isCompleted = Boolean(beforeUrlVal && afterUrlVal);
 
     sheet.getRange(targetRowIndex, 6).setValue(isCompleted ? "Hoàn Thành" : "Chưa hoàn thành");
+
+    // Xoa cache cu khi co upload moi de cac client khac sync tuc thi
+    try {
+      CacheService.getScriptCache().remove("villa_db_cache");
+    } catch(cErr) {}
 
     return ContentService.createTextOutput(
       JSON.stringify({

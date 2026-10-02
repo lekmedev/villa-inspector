@@ -50,7 +50,9 @@ input[type=search]::-webkit-search-cancel-button{display:none}
   <!-- Header -->
   <header class="sticky top-0 z-30 bg-[#18181a] sm:rounded-t-2xl border-b border-white/5" style="padding-top:env(safe-area-inset-top,0px)">
     <div class="h-16 px-5 grid grid-cols-[40px_1fr_40px] items-center">
-      <div class="w-10 h-10 -ml-2"></div>
+      <button id="btnSync" aria-label="Đồng bộ" class="tap w-10 h-10 -ml-2 flex items-center justify-center text-[#8e8e93] hover:text-white">
+        <svg id="syncIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+      </button>
       <div class="text-center leading-tight">
         <div class="text-[17px] font-medium text-[#f2f2f7] truncate max-w-[220px]">Chụp hình dạo cùng Culi AN</div>
         <div class="text-[12px] sub"><span id="doneNum">0</span> / <span id="totalNum">79</span> hoàn thành</div>
@@ -393,9 +395,13 @@ $('#cam').onchange = async e => {
 };
 
 // Tự động đồng bộ dữ liệu 2 chiều từ Google Sheet / Apps Script về thiết bị
-async function syncFromCloud() {
+async function syncFromCloud(showFeedback = false) {
   const gas = getGasEndpoint();
   if (!gas) return;
+
+  const icon = $('#syncIcon');
+  if (icon) icon.classList.add('animate-spin');
+
   try {
     const res = await fetch(gas);
     const data = await res.json();
@@ -419,14 +425,21 @@ async function syncFromCloud() {
         render();
         if (cur) renderSheet();
       }
+      if (showFeedback) toast('Đã đồng bộ xong ✓');
     }
   } catch (err) {
     console.error('Sync cloud error:', err);
+    if (showFeedback) toast('Lỗi đồng bộ');
+  } finally {
+    if (icon) setTimeout(() => icon.classList.remove('animate-spin'), 300);
   }
 }
 
+$('#btnSync').onclick = () => syncFromCloud(true);
+
 setTab('fav');
 syncFromCloud();
+
 
 
 </script>
