@@ -1,6 +1,6 @@
-const PARENT_FOLDER_ID = "YOUR_PARENT_FOLDER_ID_HERE"; // Thay ID thu muc Google Drive (hoac de trong de luu vao thu muc goc cua Drive)
-const SPREADSHEET_ID = "YOUR_SPREADSHEET_ID_HERE";     // Thay ID Google Sheet
-const SHEET_NAME = "Trang tính1";                      // Doi ten Sheet neu can
+const PARENT_FOLDER_ID = "1krBytez3bNzfFe-NQA6MdJxTPBMKYN5Q"; // Thay ID thu muc Google Drive
+const SPREADSHEET_ID = "1ZXbqdF3yxuXBZjNgW4x7O7nl7AhgekYkZExcg5pz8IE";     // Thay ID Google Sheet
+const SHEET_NAME = "Database";                      // Doi ten Sheet neu can
 
 // GET: Dong bo trang thai tat ca villa tu Google Sheet ve cho cac thiet bi
 function doGet(e) {
