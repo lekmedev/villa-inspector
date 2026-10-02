@@ -66,7 +66,7 @@ function doPost(e) {
     const typeLabel = type === "before" ? "Before" : "After";
     const fileName = `Villa ${villaNum} ${typeLabel}.jpg`;
 
-    // 1. Decode Base64 & Upload bang Drive Advanced API (ho tro Google Workspace & bypass DriveApp restriction)
+    // 1. Decode Base64 & Upload
     const base64Data = rawImage.replace(/^data:image\/\w+;base64,/, "");
     const decodedBlob = Utilities.newBlob(
       Utilities.base64Decode(base64Data),
@@ -77,35 +77,59 @@ function doPost(e) {
     let fileUrl = "";
     let fileId = "";
 
-    // Thu dung Drive Advanced Service (v2/v3) da duoc Add Service
-    if (typeof Drive !== 'undefined') {
-      // Xoa file cu cung ten neu co trong folder
-      try {
-        const query = `title = '${fileName}' and '${PARENT_FOLDER_ID}' in parents and trashed = false`;
-        const existing = Drive.Files.list({ q: query });
-        if (existing && existing.items) {
-          for (let i = 0; i < existing.items.length; i++) {
-            Drive.Files.remove(existing.items[i].id);
+    if (typeof Drive !== 'undefined' && Drive.Files) {
+      // Ho tro ca Drive API v3 (Drive.Files.create) va Drive API v2 (Drive.Files.insert)
+      if (typeof Drive.Files.create === 'function') {
+        // Drive API v3
+        try {
+          const query = `name = '${fileName}' and '${PARENT_FOLDER_ID}' in parents and trashed = false`;
+          const existing = Drive.Files.list({ q: query, fields: 'files(id, name)' });
+          if (existing && existing.files) {
+            for (let i = 0; i < existing.files.length; i++) {
+              Drive.Files.remove(existing.files[i].id);
+            }
           }
-        }
-      } catch (ex) {}
+        } catch (ex) {}
 
-      // Tao file moi
-      const resource = {
-        title: fileName,
-        mimeType: mimeType,
-        parents: [{ id: PARENT_FOLDER_ID }]
-      };
-      const newFile = Drive.Files.insert(resource, decodedBlob);
-      fileId = newFile.id;
-      fileUrl = newFile.alternateLink || `https://drive.google.com/file/d/${fileId}/view`;
+        const fileMetadata = {
+          name: fileName,
+          parents: [PARENT_FOLDER_ID]
+        };
+        const newFile = Drive.Files.create(fileMetadata, decodedBlob, { fields: 'id, webViewLink, webContentLink' });
+        fileId = newFile.id;
+        fileUrl = newFile.webViewLink || `https://drive.google.com/file/d/${fileId}/view`;
 
-      // Set public permission
-      try {
-        Drive.Permissions.insert({ role: 'reader', type: 'anyone' }, fileId);
-      } catch(ex) {}
+        try {
+          Drive.Permissions.create({ role: 'reader', type: 'anyone' }, fileId);
+        } catch (ex) {}
+
+      } else if (typeof Drive.Files.insert === 'function') {
+        // Drive API v2
+        try {
+          const query = `title = '${fileName}' and '${PARENT_FOLDER_ID}' in parents and trashed = false`;
+          const existing = Drive.Files.list({ q: query });
+          if (existing && existing.items) {
+            for (let i = 0; i < existing.items.length; i++) {
+              Drive.Files.remove(existing.items[i].id);
+            }
+          }
+        } catch (ex) {}
+
+        const resource = {
+          title: fileName,
+          mimeType: mimeType,
+          parents: [{ id: PARENT_FOLDER_ID }]
+        };
+        const newFile = Drive.Files.insert(resource, decodedBlob);
+        fileId = newFile.id;
+        fileUrl = newFile.alternateLink || `https://drive.google.com/file/d/${fileId}/view`;
+
+        try {
+          Drive.Permissions.insert({ role: 'reader', type: 'anyone' }, fileId);
+        } catch (ex) {}
+      }
     } else {
-      // Fallback dung DriveApp truyen thong
+      // Fallback dung DriveApp
       const targetFolder = DriveApp.getFolderById(PARENT_FOLDER_ID);
       const existingFiles = targetFolder.getFilesByName(fileName);
       while (existingFiles.hasNext()) {
