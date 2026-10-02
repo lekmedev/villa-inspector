@@ -1,0 +1,21 @@
+{
+  "status": "success",
+  "total": 2,
+  "villas": {
+    "1": {
+      "before": "https://drive.google.com/file/d/1TQwfHmhW7Tl4QPSbUoyvqhdOnMU3rzpm/view?usp=drivesdk",
+      "beforeTime": "Fri Oct 02 2026 11:26:59 GMT+0700 (Indochina Time)",
+      "after": "https://drive.google.com/file/d/1NFCTIFiph5CnEmvZNlmHkzQJu52gyHjn/view?usp=drivesdk",
+      "afterTime": "Fri Oct 02 2026 11:27:10 GMT+0700 (Indochina Time)",
+      "status": "Hoàn Thành"
+    },
+    "2": {
+      "before": "https://drive.google.com/file/d/1ui7tGhx3FB4e_IDJRrJidvi0ZbCFyWI1/view?usp=drivesdk",
+      "beforeTime": "Fri Oct 02 2026 11:16:12 GMT+0700 (Indochina Time)",
+      "after": "https://drive.google.com/file/d/1DByzkuOmVcgNf5SEIfV-hOB_pO0lVfYU/view?usp=drivesdk",
+      "afterTime": "Fri Oct 02 2026 11:16:20 GMT+0700 (Indochina Time)",
+      "status": "Hoàn Thành"
+    }
+  },
+  "last_synced": 1790915853
+}

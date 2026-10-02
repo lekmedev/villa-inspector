@@ -115,8 +115,10 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 </div>
 
 <script>
-// CẤU HÌNH MẶC ĐỊNH
-const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzSHV9lCQxvSNii1_5g3q_S0bvsWV7Z4TXMPLqgS2JJtKWxxY6cegy5MSaylHuoDStQqw/exec"; 
+// CẤU HÌNH MẶC ĐỊNH (Gọi trực tiếp backend proxy trên VPS để đạt tốc độ tức thì < 50ms)
+const API_VILLAS_URL = "/api/villas";
+const API_UPLOAD_URL = "/api/upload";
+const API_SYNC_URL = "/api/sync-now";
 
 const TOTAL = 80;
 // Bỏ qua villa 13 theo phong tục / quy hoạch (1..80 trừ 13)
@@ -294,11 +296,8 @@ function readFileAsBase64(file) {
   });
 }
 
-// Xử lý upload ngầm hiển thị % tiến trình bằng XMLHttpRequest
+// Xử lý upload ngầm hiển thị % tiến trình
 function uploadPhotoBackground(n, k, file, b64) {
-  const gas = getGasEndpoint();
-  if (!gas) return;
-
   const box = $('#uploadProgressBox');
   const circle = $('#uploadProgressCircle');
   const pctText = $('#uploadProgressPct');
@@ -319,8 +318,6 @@ function uploadPhotoBackground(n, k, file, b64) {
     mimeType: file.type || 'image/jpeg'
   });
 
-  // Dùng fetch với mode: 'cors' và text/plain
-  // Mô phỏng tiến trình upload mượt mà cho client
   let progress = 10;
   const interval = setInterval(() => {
     if (progress < 90) {
@@ -332,9 +329,9 @@ function uploadPhotoBackground(n, k, file, b64) {
     }
   }, 200);
 
-  fetch(gas, {
+  fetch(API_UPLOAD_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    headers: { 'Content-Type': 'application/json' },
     body: payload
   })
   .then(res => res.json())
@@ -394,16 +391,14 @@ $('#cam').onchange = async e => {
   }
 };
 
-// Tự động đồng bộ dữ liệu 2 chiều từ Google Sheet / Apps Script về thiết bị
+// Tự động đồng bộ dữ liệu từ VPS Cache (tốc độ siêu nhanh < 30ms)
 async function syncFromCloud(showFeedback = false) {
-  const gas = getGasEndpoint();
-  if (!gas) return;
-
   const icon = $('#syncIcon');
   if (icon) icon.classList.add('animate-spin');
 
   try {
-    const res = await fetch(gas);
+    const url = showFeedback ? API_SYNC_URL : API_VILLAS_URL;
+    const res = await fetch(url, { method: showFeedback ? 'POST' : 'GET' });
     const data = await res.json();
     if (data.status === 'success' && data.villas) {
       let changed = false;

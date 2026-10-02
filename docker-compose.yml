@@ -1,10 +1,11 @@
 services:
   baotri-web:
-    image: nginx:alpine
+    build: .
     container_name: baotri-web
     restart: unless-stopped
     volumes:
-      - ./public:/usr/share/nginx/html:ro
+      - ./public:/app/public
+      - ./data:/app/data
     ports:
       - "127.0.0.1:8092:80"
     networks:
