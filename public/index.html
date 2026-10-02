@@ -320,56 +320,58 @@ function uploadPhotoBackground(n, k, file, b64) {
     mimeType: file.type || 'image/jpeg'
   });
 
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', gas, true);
-  xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
-
-  xhr.upload.onprogress = (evt) => {
-    if (evt.lengthComputable) {
-      const percent = Math.min(Math.round((evt.loaded / evt.total) * 100), 99);
-      circle.setAttribute('stroke-dasharray', `${percent}, 100`);
-      pctText.textContent = `${percent}%`;
-      subText.textContent = `${percent}% · Đang tải lên...`;
+  // Dùng fetch với mode: 'cors' và text/plain
+  // Mô phỏng tiến trình upload mượt mà cho client
+  let progress = 10;
+  const interval = setInterval(() => {
+    if (progress < 90) {
+      progress += Math.floor(Math.random() * 15) + 5;
+      if (progress > 90) progress = 90;
+      circle.setAttribute('stroke-dasharray', `${progress}, 100`);
+      pctText.textContent = `${progress}%`;
+      subText.textContent = `${progress}% · Đang tải lên...`;
     }
-  };
+  }, 200);
 
-  xhr.onload = () => {
+  fetch(gas, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: payload
+  })
+  .then(res => res.json())
+  .then(result => {
+    clearInterval(interval);
     circle.setAttribute('stroke-dasharray', `100, 100`);
     pctText.textContent = `100%`;
-    try {
-      const result = JSON.parse(xhr.responseText);
-      if (result.status === 'success') {
-        subText.textContent = `Hoàn tất lưu Drive ✓`;
-        toast(`Villa ${pad(n)}: đã lưu ảnh lên Drive ✓`);
-        if (result.fileUrl) {
-          photos[n] = photos[n] || {};
-          photos[n][k] = result.fileUrl;
-          store.set('vi:photos', photos);
-          renderSheet();
-          render();
-        }
-      } else {
-        subText.textContent = `Lỗi Drive: ${result.message || 'Thất bại'}`;
-        toast(`Lỗi Drive: ${result.message || 'Thất bại'}`);
+    if (result.status === 'success') {
+      subText.textContent = `Hoàn tất lưu Drive ✓`;
+      toast(`Villa ${pad(n)}: đã lưu ảnh lên Drive ✓`);
+      if (result.fileUrl) {
+        photos[n] = photos[n] || {};
+        photos[n][k] = result.fileUrl;
+        store.set('vi:photos', photos);
+        renderSheet();
+        render();
       }
-    } catch (e) {
-      subText.textContent = `Đã gửi dữ liệu ✓`;
+    } else {
+      subText.textContent = `Lỗi: ${result.message || 'Thất bại'}`;
+      toast(`Lỗi Drive: ${result.message || 'Thất bại'}`);
     }
     setTimeout(() => {
       box.classList.add('hidden');
       box.classList.remove('flex');
     }, 2500);
-  };
-
-  xhr.onerror = () => {
-    subText.textContent = `Lỗi kết nối khi gửi ảnh`;
+  })
+  .catch(err => {
+    clearInterval(interval);
+    console.error(err);
+    subText.textContent = `Lỗi kết nối`;
+    toast(`Lỗi gửi dữ liệu`);
     setTimeout(() => {
       box.classList.add('hidden');
       box.classList.remove('flex');
     }, 3000);
-  };
-
-  xhr.send(payload);
+  });
 }
 
 $('#cam').onchange = async e => {
