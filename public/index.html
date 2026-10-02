@@ -30,21 +30,6 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 
 <div id="toast" class="pill fixed left-1/2 z-[60] -translate-x-1/2 -translate-y-24 opacity-0 bg-white text-black text-[14px] font-medium rounded-full px-5 py-2.5 shadow-2xl" style="top:calc(env(safe-area-inset-top,0px) + 10px)"><span id="toastText"></span></div>
 
-<!-- Floating Upload Progress (Chạy ngầm & hiện % tiến trình) -->
-<div id="uploadProgressBox" class="fixed right-4 bottom-5 z-[70] hidden items-center gap-3 bg-[#1c1c1e]/95 backdrop-blur-md border border-white/10 text-white px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.6)] max-w-[280px]">
-  <div class="relative w-8 h-8 shrink-0 flex items-center justify-center">
-    <svg class="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
-      <path class="text-white/10" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-      <path id="uploadProgressCircle" class="text-blue-500 transition-all duration-150" stroke-dasharray="0, 100" stroke-linecap="round" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-    </svg>
-    <span id="uploadProgressPct" class="absolute text-[10px] font-bold">0%</span>
-  </div>
-  <div class="min-w-0 flex-1">
-    <div id="uploadProgressTitle" class="text-[13px] font-medium truncate text-[#f2f2f7]">Đang tải lên Drive...</div>
-    <div id="uploadProgressSub" class="text-[11px] sub truncate">Chạy ngầm</div>
-  </div>
-</div>
-
 <div class="relative max-w-md mx-auto min-h-full bg-[#18181a] sm:my-6 sm:rounded-2xl sm:min-h-[calc(100%-3rem)] sm:shadow-[0_10px_40px_rgba(0,0,0,.5)] border border-white/5">
 
   <!-- Header -->
@@ -158,14 +143,28 @@ function formatImageUrl(url) {
   return url;
 }
 
+let uploadingState = {}; // { [villaNum]: { before: true/false, after: true/false } }
+
 function createRowElement(n) {
   const el = document.createElement('div');
   el.className = 'row flex items-center gap-4 px-3 h-24 rounded-2xl cursor-pointer';
   el.dataset.open = n;
   const p = photos[n] || {}, rawImg = p.after || p.before, img = formatImageUrl(rawImg);
+  const isUp = uploadingState[n] && (uploadingState[n].before || uploadingState[n].after);
+
   el.innerHTML = `
     <div class="relative shrink-0">
-      <div class="w-[62px] h-[62px] rounded-full soft overflow-hidden flex items-center justify-center text-[20px] font-medium text-[#8e8e93] border border-white/5">${img ? `<img src="${img}" alt="" class="w-full h-full object-cover">` : pad(n)}</div>
+      <div class="w-[62px] h-[62px] rounded-full soft overflow-hidden flex items-center justify-center text-[20px] font-medium text-[#8e8e93] border border-white/5 relative">
+        ${img ? `<img src="${img}" alt="" class="w-full h-full object-cover">` : pad(n)}
+        ${isUp ? `
+          <div class="absolute inset-0 bg-black/55 backdrop-blur-[2px] flex items-center justify-center">
+            <svg class="w-6 h-6 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+          </div>
+        ` : ''}
+      </div>
       <span class="absolute right-0 bottom-0 w-[14px] h-[14px] rounded-full border-2 border-[#18181a]" style="background:${dot(n)}"></span>
     </div>
     <div class="flex-1 min-w-0">
@@ -236,9 +235,21 @@ function renderSheet(){
   $('#vsStar').innerHTML = star(favs.has(cur));
   document.querySelectorAll('.slot').forEach(b => {
     const k = b.dataset.slot, rawUrl = p[k], url = formatImageUrl(rawUrl), label = k === 'before' ? 'Ảnh trước' : 'Ảnh sau';
-    b.innerHTML = url
-      ? `<img src="${url}" alt="${label}" class="absolute inset-0 w-full h-full object-cover"><span class="absolute left-2 bottom-2 text-[12px] font-medium bg-black/80 text-white rounded-full px-2.5 py-1 backdrop-blur-xs">${label} · Chụp lại</span>`
-      : `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span class="text-[14px] mt-2">${label}</span>`;
+    const isSlotUploading = uploadingState[cur] && uploadingState[cur][k];
+
+    b.innerHTML = `
+      ${url ? `<img src="${url}" alt="${label}" class="absolute inset-0 w-full h-full object-cover"><span class="absolute left-2 bottom-2 text-[12px] font-medium bg-black/80 text-white rounded-full px-2.5 py-1 backdrop-blur-xs">${label} · Chụp lại</span>` : `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span class="text-[14px] mt-2">${label}</span>`}
+      ${isSlotUploading ? `
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center rounded-2xl z-10">
+          <div class="w-10 h-10 rounded-full bg-black/60 flex items-center justify-center border border-white/10 shadow-lg">
+            <svg class="w-6 h-6 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+          </div>
+        </div>
+      ` : ''}
+    `;
   });
 }
 
@@ -296,20 +307,12 @@ function readFileAsBase64(file) {
   });
 }
 
-// Xử lý upload ngầm hiển thị % tiến trình
+// Xử lý upload ngầm - Spinner tối giản ngay tại ảnh (In-place Ring, No Text)
 function uploadPhotoBackground(n, k, file, b64) {
-  const box = $('#uploadProgressBox');
-  const circle = $('#uploadProgressCircle');
-  const pctText = $('#uploadProgressPct');
-  const title = $('#uploadProgressTitle');
-  const subText = $('#uploadProgressSub');
-
-  box.classList.remove('hidden');
-  box.classList.add('flex');
-  circle.setAttribute('stroke-dasharray', `0, 100`);
-  pctText.textContent = '0%';
-  title.textContent = `Villa ${pad(n)} (${k === 'before' ? 'Before' : 'After'})`;
-  subText.textContent = `0% · Đang gửi ngầm...`;
+  uploadingState[n] = uploadingState[n] || {};
+  uploadingState[n][k] = true;
+  render();
+  if (cur === n) renderSheet();
 
   const payload = JSON.stringify({
     villaId: `Villa ${pad(n)}`,
@@ -318,17 +321,6 @@ function uploadPhotoBackground(n, k, file, b64) {
     mimeType: file.type || 'image/jpeg'
   });
 
-  let progress = 10;
-  const interval = setInterval(() => {
-    if (progress < 90) {
-      progress += Math.floor(Math.random() * 15) + 5;
-      if (progress > 90) progress = 90;
-      circle.setAttribute('stroke-dasharray', `${progress}, 100`);
-      pctText.textContent = `${progress}%`;
-      subText.textContent = `${progress}% · Đang tải lên...`;
-    }
-  }, 200);
-
   fetch(API_UPLOAD_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -336,37 +328,23 @@ function uploadPhotoBackground(n, k, file, b64) {
   })
   .then(res => res.json())
   .then(result => {
-    clearInterval(interval);
-    circle.setAttribute('stroke-dasharray', `100, 100`);
-    pctText.textContent = `100%`;
+    if (uploadingState[n]) delete uploadingState[n][k];
     if (result.status === 'success') {
-      subText.textContent = `Hoàn tất lưu Drive ✓`;
-      toast(`Villa ${pad(n)}: đã lưu ảnh lên Drive ✓`);
       if (result.fileUrl) {
         photos[n] = photos[n] || {};
         photos[n][k] = result.fileUrl;
         store.set('vi:photos', photos);
-        renderSheet();
-        render();
       }
-    } else {
-      subText.textContent = `Lỗi: ${result.message || 'Thất bại'}`;
-      toast(`Lỗi Drive: ${result.message || 'Thất bại'}`);
     }
-    setTimeout(() => {
-      box.classList.add('hidden');
-      box.classList.remove('flex');
-    }, 2500);
+    render();
+    if (cur === n) renderSheet();
   })
   .catch(err => {
-    clearInterval(interval);
+    if (uploadingState[n]) delete uploadingState[n][k];
+    render();
+    if (cur === n) renderSheet();
     console.error(err);
-    subText.textContent = `Lỗi kết nối`;
-    toast(`Lỗi gửi dữ liệu`);
-    setTimeout(() => {
-      box.classList.add('hidden');
-      box.classList.remove('flex');
-    }, 3000);
+    toast(`Lỗi gửi dữ liệu Villa ${pad(n)}`);
   });
 }
 
